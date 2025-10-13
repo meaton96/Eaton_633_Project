@@ -1,0 +1,7 @@
+Emi-Johnson, O. G., & Nkrumah, K. J. (2025). Predicting 30-Day Hospital Readmission in Patients With Diabetes Using Machine Learning on Electronic Health Record Data. Cureus, 17(4), e82437. https://doi.org/10.7759/cureus.82437
+
+Liu, V., Sue, L., & Wu, Y. (2024). Comparison of machine learning models for predicting 30-day readmission rates for patients with diabetes. Journal Of Medical Artificial Intelligence, 7. doi:10.21037/jmai-24-70
+
+Mahmoud, M., Bader, M., & McNicholas, J. (2023). Short-term and long-term readmission prediction in uncontrolled diabetic patients using machine learning techniques. In Proceedings of the 16th International Joint Conference on Biomedical Engineering Systems and Technologies (Vol. 5: CCH, pp. 680–688). SciTePress. https://doi.org/10.5220/0011926000003414
+
+Strack, Beata, DeShazo, Jonathan P., Gennings, Chris, Olmo, Juan L., Ventura, Sebastian, Cios, Krzysztof J., Clore, John N., Impact of HbA1c Measurement on Hospital Readmission Rates: Analysis of 70,000 Clinical Database Patient Records, BioMed Research International, 2014, 781670, 11 pages, 2014. https://doi.org/10.1155/2014/781670 
