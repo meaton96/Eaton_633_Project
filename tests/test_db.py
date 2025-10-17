@@ -3,7 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from src.shared_util import metrics_db
+from src.shared_util.metrics import metrics_db
 
 
 @pytest.fixture
