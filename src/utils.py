@@ -2,6 +2,7 @@ import pandas as pd
 from pathlib import Path
 from typing import List
 import numpy as np
+import os
 
 COLS = ['model', 'pipeline_notes', 'hyperparam_notes', 
         'roc_auc', 'accuracy', 'precision', 'recall', 'f1',
@@ -12,6 +13,7 @@ CSV_DIR: Path
 def make_metrics_file(data_dir: str, overwrite=True):
     path = Path(data_dir)
     path.mkdir(parents=True, exist_ok=True)
+
     csv_path = path / 'metrics.csv'
     if overwrite and csv_path.exists():
         csv_path.unlink()  # remove existing file
@@ -19,7 +21,14 @@ def make_metrics_file(data_dir: str, overwrite=True):
     global CSV_DIR
     CSV_DIR = csv_path
     df.to_csv(CSV_DIR, index=False)
+    print(f'made metrics log file {os.path.abspath(CSV_DIR)}')
     return df
+
+def set_csv_path(dir: str | Path):
+    if dir is Path:
+        CSV_DIR = dir
+    else:
+        CSV_DIR = Path(dir)
 
 def log_metric(
         model: str,
