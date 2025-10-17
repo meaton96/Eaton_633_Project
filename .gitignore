@@ -185,3 +185,5 @@ cython_debug/
 data/*.csv
 data/*.joblib
 data/temp/*
+
+src/shared_util/data/*.joblib
