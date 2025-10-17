@@ -18,7 +18,6 @@ def make_metrics_file(data_dir: str, overwrite=True):
     if overwrite and csv_path.exists():
         csv_path.unlink()  # remove existing file
     df = pd.DataFrame(columns=COLS)
-    global CSV_DIR
     CSV_DIR = csv_path
     df.to_csv(CSV_DIR, index=False)
     print(f'made metrics log file {os.path.abspath(CSV_DIR)}')
