@@ -33,5 +33,9 @@ dependencies = [
 [tool.setuptools]
 package-dir = {"" = "src"}
 
+[tool.setuptools.package-data]
+shared_util = ["data/*.csv"]
+
+
 [tool.setuptools.packages.find]
 where = ["src"]

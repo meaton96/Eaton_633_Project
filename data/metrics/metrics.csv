@@ -1,5 +1,1 @@
 id,model,pipeline_notes,hyperparam_notes,notes,roc_auc,accuracy,precision,recall,f1,TN,TP,FP,FN
-0,rf_base_undsampl,under_sample,None,None,0.6053557593031422,,,,,,,,
-0,rf_base_smote,SMOTE,None,None,0.5052283145268828,,,,,,,,
-0,rf_held_out_test,under_sample,tuned_best_roc_auc,None,0.6619935072223517,0.6279534442279834,0.17304534545913855,0.603258476442096,0.2689438555162937,11201,1370,6547,901
-0,rf_f2_weighted,under_sample,tuned_best_roc_auc,None,0.6619935072223517,0.48458963984215,0.1507075266950256,0.7644209599295465,0.2517766497461929,7965,1736,9783,535
