@@ -204,7 +204,9 @@ def log_metric(
 
     if write:
         csv_dump()
-
+    print(f'logged row: ({metric_id}, {model})')
+    # print('\n')
+    # print(df)
     return df.loc[selection].copy()
 
 
