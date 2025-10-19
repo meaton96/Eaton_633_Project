@@ -1,8 +1,9 @@
 id,model,pipeline_notes,hyperparam_notes,notes,roc_auc,accuracy,precision,recall,f1,TN,TP,FP,FN
 0,rf_base_undsampl,under_sample,,,0.6076117838653242,,,,,,,,
 0,rf_base_smote,SMOTE,,,0.5056575664862978,,,,,,,,
-0,rf_held_out_test,under_sample,tuned_best_roc_auc,first pass,0.6625101586107853,0.6681152904740496,0.18380332610267536,0.5596653456627037,0.27672545177443936,12104.0,1271.0,5644.0,1000.0
+0,rf_held_out_test,under_sample,tuned_best_roc_auc,first pass,0.6625101586107853,0.6681152904740496,0.1838033261026753,0.5596653456627037,0.2767254517744393,12104.0,1271.0,5644.0,1000.0
 0,rf_f2_weighted,under_sample,tuned_best_roc_auc,,0.6620710396651511,0.5598681252809831,0.1639950678175092,0.702774108322325,0.2659335166208448,9612.0,1596.0,8136.0,675.0
-0,sgd_base_undsampl,under_sample,None,first pass,0.5456141920989944,,,,,,,,
-0,sgd_base_smote,SMOTE,,first pass,0.5175511099739002,,,,,,,,
-0,sgd_held_out_test,under_sample,tuned_best_roc_auc,first pass,0.6625101586107853,0.6681152904740496,0.18380332610267536,0.5596653456627037,0.27672545177443936,12104.0,1271.0,5644.0,1000.0
+0,sgd_base_undsampl,under_sample,None,first pass,0.5758683163037178,,,,,,,,
+0,sgd_base_smote,SMOTE,None,first pass,0.5010221859344485,,,,,,,,
+0,sgd_held_out_test,under_sample,tuned_best_roc_auc,first pass,0.645900699722233,0.6518307607772617,0.1691311082946064,0.5288419198590929,0.2562953478446436,11848.0,1201.0,5900.0,1070.0
+0,svc_base_undsampl,under_sample,None,first pass,0.607125582042585,,,,,,,,
