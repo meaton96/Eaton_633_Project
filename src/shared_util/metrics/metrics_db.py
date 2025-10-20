@@ -7,11 +7,13 @@ import pandas as pd
 
 
 COLS = [
-    "id",
-    "model",
-    "pipeline_notes",
-    "hyperparam_notes",
-    "notes",
+    "id",           # run id (meant to act as primary key for save/overwrite)
+    "model",        # model [rf, svc, sgd...]
+    "data",         # data set [train ,validate, test]
+    "threshold notes", # [base, custom]
+    "pipeline_notes",  # [SMOTE, under_sample...] 
+    "hyperparam_notes", # [tuned, base]
+    "notes", # run notes for entire pipeline
     "roc_auc",
     "accuracy",
     "precision",
@@ -125,6 +127,8 @@ def _build_row(
     model: str,
     pipeline_notes: str,
     hyperparam_notes: str,
+    data: str,
+    threshold_notes: str,
     notes: str,
     roc_auc: float | None,
     accuracy: float | None,
@@ -140,8 +144,10 @@ def _build_row(
     row_map = {
         "id": metric_id,
         "model": model,
+        "data": data,
         "pipeline_notes": pipeline_notes,
         "hyperparam_notes": hyperparam_notes,
+        "threshold notes": threshold_notes,
         "notes": notes,
         "roc_auc": roc_auc,
         "accuracy": accuracy,
@@ -162,6 +168,8 @@ def log_metric(
     notes: str = "None",
     pipeline_notes: str = "None",
     hyperparam_notes: str = "None",
+    data: str = "test",
+    threshold_notes: str = "base",
     roc_auc: float | None = None,
     accuracy: float | None = None,
     precision: float | None = None,
@@ -174,15 +182,23 @@ def log_metric(
     write: bool = True,
 ) -> pd.DataFrame:
     """
-    Upsert a metric row identified by (id, model).
+    Upsert a metric row identified by (id, model, data, threshold_notes, pipeline_notes).
     """
     df = _ensure_table_loaded()
-    mask = (df["id"] == metric_id) & (df["model"] == model)
+    mask = (
+        (df["id"] == metric_id)
+        & (df["model"] == model)
+        & (df["data"] == data)
+        & (df["threshold notes"] == threshold_notes)
+        & (df["pipeline_notes"] == pipeline_notes)
+    )
     row = _build_row(
         metric_id,
         model,
         pipeline_notes,
         hyperparam_notes,
+        data,
+        threshold_notes,
         notes,
         roc_auc,
         accuracy,
@@ -204,7 +220,7 @@ def log_metric(
 
     if write:
         csv_dump()
-    print(f'logged row: ({metric_id}, {model})')
+    print(f'logged row: ({metric_id}, {model}, {data}, {threshold_notes}, {pipeline_notes})')
     # print('\n')
     # print(df)
     return df.loc[selection].copy()
