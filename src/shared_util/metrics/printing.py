@@ -3,9 +3,31 @@ from sklearn.metrics import (
     precision_score, recall_score, confusion_matrix,
     classification_report, roc_auc_score
 )
+import matplotlib.pyplot as plt
+import seaborn as sns
 
 from shared_util.metrics import metrics_db
 
+
+
+
+def plot_y_dist(y, ax=None, title='Target Variable Distribution'):
+    ax = ax or plt.gca()
+    sns.countplot(x=y, hue=y, ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel('Readmitted')
+    ax.set_ylabel('count')
+
+def check_y_dist(y_train, y_validate, y_test):
+    
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
+
+    plot_y_dist(y_train, ax=axes[0], title='Train')
+    plot_y_dist(y_validate, ax=axes[1], title='Validate')
+    plot_y_dist(y_test, ax=axes[2], title='Test')
+
+    plt.tight_layout()
+    plt.show()
 
 def print_metrics(y_true, 
                   y_pred,

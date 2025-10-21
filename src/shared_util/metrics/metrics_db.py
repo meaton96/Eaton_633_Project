@@ -91,6 +91,10 @@ def read_in(csv_path: str | Path | None = None, create_if_missing: bool = True) 
 
     return _set_state(df, resolved_path).copy()
 
+def close(write=True):
+    if write:
+        csv_dump()
+    table=None
 
 def csv_dump(csv_path: str | Path | None = None) -> None:
     """

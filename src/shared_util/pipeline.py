@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import re
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.utils.validation import check_is_fitted, check_array
+from sklearn.utils.validation import check_array
 
 class CleaningPipeline(BaseEstimator, TransformerMixin):
 
@@ -45,6 +45,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X):
+        from sklearn.utils.validation import check_is_fitted
         check_is_fitted(self, ["feature_names_out_", "_out_dtypes_"])
         Xw = self._ensure_dataframe(X, like=self.feature_names_in_).copy()
         X_prev = getattr(self, "X", None)
@@ -84,7 +85,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
     
     def _safe_drop_non_features(self):
         # Raw strings we never want in model space
-        base_drop = ['diabetesMed', 'change']
+        base_drop = ['diabetesMed', 'change', 'patient_nbr', 'encounter_id']
 
         drug_cols = [
             'metformin', 'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride',
@@ -104,6 +105,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
 
     def get_feature_names_out(self, input_features=None):
+        from sklearn.utils.validation import check_is_fitted
         check_is_fitted(self, "feature_names_out_")
         return self.feature_names_out_
 
