@@ -1,29 +1,126 @@
 import numpy as np
 import pandas as pd
 import re
+from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.utils.validation import check_is_fitted, check_array
 
-class CleaningPipeline:
+class CleaningPipeline(BaseEstimator, TransformerMixin):
 
     X: pd.DataFrame
 
 
+    def __init__(self, create_interactions=True) -> None:
+        self.create_interactions = create_interactions
 
-    def run(self, X ,*, create_interactions=True):
-        self.X = X
 
-        self.fix_dtypes()
-        self.drop_bad_cols()
+
+    def fit(self, X, y=None):
+        X = self._ensure_dataframe(X)
+        self.feature_names_in_ = np.array(X.columns, dtype=object)
+        self.n_features_in_ = X.shape[1]
+        self.X = X.copy()
+
         self.bin_categories()
         self.drop_previous_category_cols()
         self.one_hot_cats()
         self.handle_drug_cols()
-        self.drop_reundant_cols()
 
-        if (create_interactions):
+        if self.create_interactions:
             self.create_numerical_interactions()
             self.add_dummy_interactions()
 
-            
+   
+        self._ref_dummies_ = self._choose_ref_dummies(self.X)
+
+       
+        self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
+
+       
+        self._safe_drop_non_features()
+
+        # Freeze final schema
+        self.feature_names_out_ = np.array(self.X.columns, dtype=object)
+        self._out_dtypes_ = self.X.dtypes.to_dict()
+
+        return self
+
+    def transform(self, X):
+        check_is_fitted(self, ["feature_names_out_", "_out_dtypes_"])
+        Xw = self._ensure_dataframe(X, like=self.feature_names_in_).copy()
+        X_prev = getattr(self, "X", None)
+        try:
+            self.X = Xw
+            self.bin_categories()
+            self.drop_previous_category_cols()
+            self.one_hot_cats()
+            self.handle_drug_cols()
+            if self.create_interactions:
+                self.create_numerical_interactions()
+                self.add_dummy_interactions()
+
+            # Drop the same refs chosen at fit, if they exist in this X
+            if hasattr(self, "_ref_dummies_"):
+                self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
+
+            self._safe_drop_non_features()
+
+            Xw = self.X
+        finally:
+            if X_prev is not None:
+                self.X = X_prev
+
+        # align to training schema
+        for col in self.feature_names_out_:
+            if col not in Xw.columns:
+                Xw[col] = 0
+        Xw = Xw.loc[:, self.feature_names_out_]
+
+        for c, dt in self._out_dtypes_.items():
+            if c in Xw.columns:
+                try: Xw[c] = Xw[c].astype(dt, copy=False)
+                except: pass
+
+        return Xw
+    
+    def _safe_drop_non_features(self):
+        # Raw strings we never want in model space
+        base_drop = ['diabetesMed', 'change']
+
+        drug_cols = [
+            'metformin', 'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride',
+            'acetohexamide', 'glipizide', 'glyburide', 'tolbutamide', 'pioglitazone',
+            'rosiglitazone', 'acarbose', 'miglitol', 'troglitazone', 'tolazamide',
+            'examide', 'citoglipton', 'insulin', 'glyburide-metformin',
+            'glipizide-metformin', 'glimepiride-pioglitazone',
+            'metformin-rosiglitazone', 'metformin-pioglitazone'
+        ]
+
+        # Drop drug strings and all flags EXCEPT keep metformin_flag and insulin_flag
+        drop_flags = [f"{c}_flag" for c in drug_cols if c not in ('metformin', 'insulin')]
+
+        to_drop = [c for c in (base_drop + drug_cols + drop_flags) if c in self.X.columns]
+        if to_drop:
+            self.X = self.X.drop(columns=to_drop, errors="ignore")
+
+
+    def get_feature_names_out(self, input_features=None):
+        check_is_fitted(self, "feature_names_out_")
+        return self.feature_names_out_
+
+    
+    def _ensure_dataframe(self, X, like: np.ndarray | None = None) -> pd.DataFrame:
+        """
+        Accept pandas or numpy; if numpy, wrap in a DataFrame with either the
+        original training column names (when available) or generic names.
+        """
+        if isinstance(X, pd.DataFrame):
+            return X
+        X_arr = check_array(X, accept_sparse=False, dtype=None, force_all_finite="allow-nan")
+        if like is not None:
+            cols = list(like)
+        else:
+            cols = [f"x{i}" for i in range(X_arr.shape[1])]
+        return pd.DataFrame(X_arr, columns=cols)
 
     def add_dummy_interactions(self):
         def add_dummy_interactions(df, left_cols, right_cols, prefix='i_'):
@@ -36,12 +133,8 @@ class CleaningPipeline:
                     col_name = f'{prefix}{lc}__{rc}'
                     out[col_name] = out[lc] * out[rc]
                     count += 1
-                    print(f'added col: {col_name}')
 
-            print(f'added {count} interaction terms from')
-            print(left_cols)
-            print('x')
-            print(right_cols)
+            
 
             return out
         
@@ -89,52 +182,84 @@ class CleaningPipeline:
             self.X[f'i_hosp_time__{col}'] = self.X[col] * self.X['time_in_hospital']
 
 
+    def _choose_ref_dummies(self, X: pd.DataFrame) -> dict[str, str]:
+        # Map each dummy family to a regex
+        families = {
+            'diag1_group_':       r'^diag1_group_',
+            'diag2_group_':       r'^diag2_group_',
+            'diag3_group_':       r'^diag3_group_',
+            'admission_source_':  r'^admission_source_',
+            'discharge_loc_':     r'^discharge_loc_',
+            'specialty_cat_':     r'^specialty_cat_',
+            'race_cat_':          r'^race_cat_',
+            'age_group_':         r'^age_group_',
+            'gender_':            r'^gender_',
+            'a1c_group_':         r'^a1c_group_',
+            'glucose_group_':     r'^glucose_group_',
+            'admit_type_group_':  r'^admit_type_group_',
+        }
+        refs = {}
+        for fam, pat in families.items():
+            cols = X.filter(regex=pat).columns
+            if len(cols) >= 2:
+                # Choose the most frequent level as reference (sum of one-hot = count)
+                counts = X[cols].sum(axis=0)
+                ref_col = counts.idxmax()
+                refs[fam] = ref_col
+        return refs
 
 
 
-    def drop_reundant_cols(self):
+    # def drop_old_cols(self):
 
-        # drop one col of one_hot cat for each category
-        self.X = self.X.drop(
-            columns=[
-                'diag1_group_circulatory', 
-                'specialty_cat_missing', 
-                'age_group_30-60', # mid age group
-                'race_cat_caucasian', 
-                'gender_male', # most common base for medical studies
-                'discharge_loc_home', 
-                'admission_source_other',
-                'a1c_group_no_test',
-                'glucose_group_no_test',
-                'admit_type_group_emergency'
+    #     # drop one col of one_hot cat for each category
+    #     self.X = self.X.drop(
+    #         columns=[
+    #             'diag1_group_circulatory', 
+    #             'specialty_cat_missing', 
+    #             'age_group_30-60', # mid age group
+    #             'race_cat_caucasian', 
+    #             'gender_male', # most common base for medical studies
+    #             'discharge_loc_home', 
+    #             'admission_source_other',
+    #             'a1c_group_no_test',
+    #             'glucose_group_no_test',
+    #             'admit_type_group_emergency'
                 
-            ]
-        )
+    #         ]
+    #     )
 
 
-        # keep insulin and metformin columns (binary yes no prescribed)
-        drug_cols = [
-            'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride',
-            'acetohexamide', 'glipizide', 'glyburide', 'tolbutamide', 'pioglitazone',
-            'rosiglitazone', 'acarbose', 'miglitol', 'troglitazone', 'tolazamide',
-            'examide', 'citoglipton', 'glyburide-metformin',
-            'glipizide-metformin', 'glimepiride-pioglitazone',
-            'metformin-rosiglitazone', 'metformin-pioglitazone'
-        ]
-        # Create the list of flag columns
-        flag_cols = [f"{c}_flag" for c in drug_cols]
+       
+    #     drug_cols = [
+    #         'metformin', 'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride',
+    #         'acetohexamide', 'glipizide', 'glyburide', 'tolbutamide', 'pioglitazone',
+    #         'rosiglitazone', 'acarbose', 'miglitol', 'troglitazone', 'tolazamide',
+    #         'examide', 'citoglipton', 'insulin', 'glyburide-metformin',
+    #         'glipizide-metformin', 'glimepiride-pioglitazone',
+    #         'metformin-rosiglitazone', 'metformin-pioglitazone'
+    #     ]
+    #     # Create the list of flag columns
+    #     flag_cols = [f"{c}_flag" for c in drug_cols]
 
-        self.X = self.X.drop(
-            columns=[
-                'diabetesMed',
-                'change'
-            ]
-        )
-        # drop drug columns
-        self.X = self.X.drop(
-            columns=drug_cols
-        )
-        self.X = self.X.drop(columns=flag_cols)
+    #     # keep insulin and metformin columns (binary yes no prescribed)
+    #     flag_cols.remove('metformin_flag')
+    #     flag_cols.remove('insulin_flag')
+
+    #     self.X = self.X.drop(
+    #         columns=[
+    #             'diabetesMed',
+    #             'change'
+    #         ]
+    #     )
+    #     # drop drug columns
+    #     self.X = self.X.drop(
+    #         columns=drug_cols
+    #     )
+
+
+
+    #     self.X = self.X.drop(columns=flag_cols)
 
 
 
@@ -377,27 +502,9 @@ class CleaningPipeline:
     
 
 
-    def fix_dtypes(self):
-        # fix diag column types
-        self.X['diag_1'] = self.X['diag_1'].astype('string')
-        self.X['diag_2'] = self.X['diag_2'].astype('string')
-        self.X['diag_3'] = self.X['diag_3'].astype('string')
-
-        # fix specialty column type
-        self.X['medical_specialty'] = self.X['medical_specialty'].astype('string')
-
-        # fix race
-        self.X['race'] = self.X['race'].astype('string')
-
-        # fix age
-        self.X['age'] = self.X['age'].astype('string')
-
-        self.X['change'] = self.X['change'].astype('string')
+    
 
 
-
-    def drop_bad_cols(self):
-        self.X = self.X.drop(columns=['weight', 'payer_code'])
 
 
 
