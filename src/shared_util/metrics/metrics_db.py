@@ -10,7 +10,7 @@ COLS = [
     "id",           # run id (meant to act as primary key for save/overwrite)
     "model",        # model [rf, svc, sgd...]
     "data",         # data set [train ,validate, test]
-    "threshold notes", # [base, custom]
+    "threshold_notes", # [base, custom]
     "pipeline_notes",  # [SMOTE, under_sample...] 
     "hyperparam_notes", # [tuned, base]
     "notes", # run notes for entire pipeline

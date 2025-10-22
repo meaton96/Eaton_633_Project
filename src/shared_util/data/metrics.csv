@@ -1,4 +1,4 @@
-id,model,data,threshold notes,pipeline_notes,hyperparam_notes,notes,roc_auc,accuracy,precision,recall,f1,TN,TP,FP,FN
+id,model,data,threshold_notes,pipeline_notes,hyperparam_notes,notes,roc_auc,accuracy,precision,recall,f1,TN,TP,FP,FN
 0,rf,train,base,under_sample,,,0.6456998445994104,,,,,,,,
 0,rf,train,base,SMOTE,,,0.5901166588111921,,,,,,,,
 0,rf,validate,base,under_sample,tuned_best_roc_auc,,0.6616553796197845,0.6249584247987761,0.1747604889329369,0.6223529411764706,0.2728914108847046,8337.0,1058.0,4996.0,642.0
@@ -14,4 +14,11 @@ id,model,data,threshold notes,pipeline_notes,hyperparam_notes,notes,roc_auc,accu
 0,xgboost,train,base,under_sample,,first pass,0.6104132139823062,,,,,,,,
 0,xgboost,train,base,SMOTE,,first pass,0.5859142977266314,,,,,,,,
 0,xgboost,validate,base,under_sample,tuned best F2,first pass,0.658121710395701,0.389343444422271,0.1381578947368421,0.84,0.2372881355932203,4425.0,1428.0,8908.0,272.0
-0,xgboost,test,f2_weighted,under_sample,tuned best F2,first pass,0.6547606618211098,0.3928098516949153,0.1472227561022487,0.8376161837069437,0.25042909685328973,4401.0,1532.0,8874.0,297.0
+0,xgboost,test,f2_weighted,under_sample,tuned best F2,first pass,0.6547606618211098,0.3928098516949153,0.1472227561022487,0.8376161837069437,0.2504290968532897,4401.0,1532.0,8874.0,297.0
+1,sgd,train,base,under_sample,None,with log transform,0.596192119554133,,,,,,,,
+1,sgd,train,base,SMOTE,None,with log transform,0.5502371863555668,,,,,,,,
+1,sgd,validate,base,under_sample,tuned best roc,with log transform,0.6518665760761666,0.6469766513669926,0.1754543818607162,0.5735294117647058,0.2687060768912774,8751.0,975.0,4582.0,725.0
+1,svc,train,base,under_sample,None,with log transform,0.6504694189706435,,,,,,,,
+1,svc,validate,base,under_sample,tuned best roc,with log transform,0.6499607784312256,0.6846936739173818,0.18067226890756302,0.5058823529411764,0.26625386996904027,9433.0,860.0,3900.0,840.0
+1,svc,test,f2_weighted,under_sample,"tuned best roc, uses HalvingRandomSearchCV",with log transform,0.6470033226969962,0.5035752118644068,0.16041691625733798,0.7320940404592674,0.26316823899371067,6267.0,1339.0,7008.0,490.0
+1,sgd,test,f2_weighted,under_sample,tuned best ROC,with log transform,0.6547167779208998,0.4426641949152542,0.1521486643437863,0.7878622197922361,0.25504424778761065,5245.0,1441.0,8030.0,388.0

@@ -3,23 +3,19 @@ import pandas as pd
 import re
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array
+from typing import List
 
 class CleaningPipeline(BaseEstimator, TransformerMixin):
 
     X: pd.DataFrame
 
 
-    def __init__(self, create_interactions=True) -> None:
+    def __init__(self, create_interactions=True, log_transform_cols:None | np.ndarray=None) -> None:
         self.create_interactions = create_interactions
+        self.log_transform_cols = log_transform_cols
 
 
-
-    def fit(self, X, y=None):
-        X = self._ensure_dataframe(X)
-        self.feature_names_in_ = np.array(X.columns, dtype=object)
-        self.n_features_in_ = X.shape[1]
-        self.X = X.copy()
-
+    def run_pipe(self):
         self.bin_categories()
         self.drop_previous_category_cols()
         self.one_hot_cats()
@@ -28,6 +24,17 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         if self.create_interactions:
             self.create_numerical_interactions()
             self.add_dummy_interactions()
+
+        if self.log_transform_cols is not None and len(self.log_transform_cols) > 0:
+            self.log_transform_continous_features()
+
+    def fit(self, X, y=None):
+        X = self._ensure_dataframe(X)
+        self.feature_names_in_ = np.array(X.columns, dtype=object)
+        self.n_features_in_ = X.shape[1]
+        self.X = X.copy()
+
+        self.run_pipe()
 
    
         self._ref_dummies_ = self._choose_ref_dummies(self.X)
@@ -43,6 +50,10 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self._out_dtypes_ = self.X.dtypes.to_dict()
 
         return self
+    
+
+    def log_transform_continous_features(self):
+        self.X[self.log_transform_cols] = np.log1p(self.X[self.log_transform_cols])
 
     def transform(self, X):
         from sklearn.utils.validation import check_is_fitted
@@ -51,13 +62,8 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         X_prev = getattr(self, "X", None)
         try:
             self.X = Xw
-            self.bin_categories()
-            self.drop_previous_category_cols()
-            self.one_hot_cats()
-            self.handle_drug_cols()
-            if self.create_interactions:
-                self.create_numerical_interactions()
-                self.add_dummy_interactions()
+
+            self.run_pipe()
 
             # Drop the same refs chosen at fit, if they exist in this X
             if hasattr(self, "_ref_dummies_"):
