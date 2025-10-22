@@ -14,7 +14,7 @@ def group_split(
     val_size: float = 0.15,
     test_size: float = 0.15,
     random_state: int = 42,
-    balance_tolerance: float = 0.01,  # allowed abs diff in positive rate vs overall
+    balance_tolerance: float = 0.01, 
     max_tries: int = 50,
 ):
     """

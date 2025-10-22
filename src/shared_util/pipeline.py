@@ -452,11 +452,11 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         def bin_age(age: str) -> str:
             # grabs [0-10], [10-20], [20-30]
             if ('10' in age or '20' in age):
-                return '<30'
+                return 'under_30'
             # grabs (30-40), (40-50), (50-60)
             if ('40' in age or '50' in age):
                 return '30-60'
-            return '>60'
+            return 'over_60'
         # bin a1c results
         def bin_a1c(val: str) -> str:
             if pd.isna(val):

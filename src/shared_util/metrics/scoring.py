@@ -2,6 +2,12 @@ import numpy as np
 from sklearn.metrics import precision_recall_curve
 import matplotlib.pyplot as plt
 from typing import Tuple
+from sklearn.metrics import make_scorer, fbeta_score
+
+
+def make_f2_scorer():
+    return make_scorer(fbeta_score, beta=2, average='binary')
+
 
 
 def best_threshold_by_fbeta(y_true, scores, beta=2.0):
