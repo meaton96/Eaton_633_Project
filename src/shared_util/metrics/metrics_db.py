@@ -151,7 +151,7 @@ def _build_row(
         "data": data,
         "pipeline_notes": pipeline_notes,
         "hyperparam_notes": hyperparam_notes,
-        "threshold notes": threshold_notes,
+        "threshold_notes": threshold_notes,
         "notes": notes,
         "roc_auc": roc_auc,
         "accuracy": accuracy,
@@ -193,7 +193,7 @@ def log_metric(
         (df["id"] == metric_id)
         & (df["model"] == model)
         & (df["data"] == data)
-        & (df["threshold notes"] == threshold_notes)
+        & (df["threshold_notes"] == threshold_notes)
         & (df["pipeline_notes"] == pipeline_notes)
     )
     row = _build_row(

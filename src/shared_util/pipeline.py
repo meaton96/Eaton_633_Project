@@ -433,7 +433,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             if id in [1, 6, 8, 13]:
                 return 'home'
             if id in [2, 3, 4, 5, 15, 22, 23, 24, 27, 28, 29, 30]:
-                return 'transfer_inpatient'
+                raise ValueError('Inpatient-fransferred patient detected')
             if id in [16, 17, 12]:
                 return 'outpatient_followup'
             if id == 7:
