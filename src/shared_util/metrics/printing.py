@@ -6,7 +6,7 @@ from sklearn.metrics import (
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from shared_util.metrics import metrics_db
+#from shared_util.metrics import metrics_db
 
 
 
@@ -32,7 +32,7 @@ def check_y_dist(y_train, y_validate, y_test):
 def print_metrics(y_true, 
                   y_pred,
                   y_proba,
-                  metrics_db_id,
+                  run_id,
                   metrics_notes,
                   data,
                   threshold_notes='base', 
@@ -61,8 +61,9 @@ def print_metrics(y_true,
     print("\nClassification report:\n", classification_report(y_true, y_pred))
 
     if log:
-        metrics_db.log_metric(
-            metric_id=metrics_db_id,
+        from shared_util.metrics.log import log_metric
+        log_metric(
+            run_id=run_id,
             notes=metrics_notes,
             model=model or "",
             data=data,
