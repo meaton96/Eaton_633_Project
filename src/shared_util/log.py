@@ -5,8 +5,9 @@ import pandas as pd
 from typing import Any
 
 
-UPSERT_SQL = """
+METRICS_SQL = """
 INSERT INTO metrics (
+    run_id,
     model,
     data,
     threshold_notes,
@@ -23,6 +24,7 @@ INSERT INTO metrics (
     FP,
     FN
 ) VALUES (
+    :run_id,
     :model,
     :data,
     :threshold_notes,
@@ -39,12 +41,8 @@ INSERT INTO metrics (
     :FP,
     :FN
 )
-ON CONFLICT (run_id)
+ON CONFLICT (run_id, model, data, threshold_notes, pipeline_notes)
 DO UPDATE SET
-    model = EXCLUDED.model,
-    data = EXCLUDED.data,
-    threshold_notes = EXCLUDED.threshold_notes,
-    pipeline_notes = EXCLUDED.pipeline_notes,
     hyperparam_notes = EXCLUDED.hyperparam_notes,
     notes = EXCLUDED.notes,
     roc_auc = EXCLUDED.roc_auc,
@@ -58,6 +56,24 @@ DO UPDATE SET
     FN = EXCLUDED.FN,
     created_at = CURRENT_TIMESTAMP;
 """
+
+
+HYPERPARAM_SQL = """
+INSERT INTO hyperparameters (
+    run_id,
+    model,
+    hyperparam_text
+) VALUES (
+    :run_id,
+    :model,
+    :hyperparam_text
+)
+ON CONFLICT (run_id, model) DO UPDATE
+SET
+    hyperparam_text = EXCLUDED.hyperparam_text,
+    created_at = CURRENT_TIMESTAMP;
+"""
+
 
 
 load_dotenv()
@@ -79,8 +95,27 @@ def _to_float(x):
 def _to_int(x):
     return None if x is None or (hasattr(x, "__int__") and pd.isna(x)) else int(x)
 
+def log_hyperparameters(
+    run_id: int,
+    model: str,
+    hyperparam_text: str = "None"
+) -> pd.DataFrame:
+    params = {
+        "run_id": _to_int(run_id),
+        "model": str(model),
+        "hyperparam_text": str(hyperparam_text),  
+    }
+
+    with engine.begin() as conn:
+        conn.execute(text(HYPERPARAM_SQL), params)
+
+
+    print('logged hyperparameters')
+    return pd.DataFrame([params])
+
+
 def log_metric(
-    run_id: Any,
+    run_id: int,
     model: str,
     notes: str = "None",
     pipeline_notes: str = "None",
@@ -100,6 +135,7 @@ def log_metric(
 ) -> pd.DataFrame:
 
     params = {
+        "run_id": _to_int(run_id),
         "model": str(model),
         "data": str(data),  # must match the enum label exactly
         "threshold_notes": str(threshold_notes) if threshold_notes is not None else None,
@@ -121,6 +157,6 @@ def log_metric(
         return pd.DataFrame([params])
 
     with engine.begin() as conn:
-        conn.execute(text(UPSERT_SQL), params)
+        conn.execute(text(METRICS_SQL), params)
 
     return pd.DataFrame([params])

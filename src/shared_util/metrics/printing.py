@@ -61,7 +61,7 @@ def print_metrics(y_true,
     print("\nClassification report:\n", classification_report(y_true, y_pred))
 
     if log:
-        from shared_util.metrics.log import log_metric
+        from shared_util.log import log_metric
         log_metric(
             run_id=run_id,
             notes=metrics_notes,

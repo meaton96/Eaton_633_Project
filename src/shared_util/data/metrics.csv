@@ -13,5 +13,8 @@ id,model,data,threshold_notes,pipeline_notes,hyperparam_notes,notes,roc_auc,accu
 1,svc,test,f2_weighted,under_sample,"tuned best roc, uses HalvingRandomSearchCV",with log transform,0.6695853514517446,0.3488470309992398,0.1156821378340365,0.8575152041702867,0.2038624393266549,3143.0,987.0,7545.0,164.0
 0,xgboost,train,base,under_sample,,first pass,0.59922026924701,,,,,,,,
 0,xgboost,train,base,SMOTE,,first pass,0.5765526620064103,,,,,,,,
-0,xgboost,validate,base,under_sample,tuned best roc_auc,first pass,0.6105393005566978,0.5872762417009832,0.1361760660247593,0.5736754966887417,0.22010481181515007,6295.0,693.0,4396.0,515.0
-0,xgboost,test,f2_weighted,under_sample,tuned best F2,first pass,0.6339347261168367,0.3723287439817552,0.11186650185414092,0.7862728062554301,0.19586624824153231,3503.0,905.0,7185.0,246.0
+0,xgboost,validate,base,under_sample,tuned best roc_auc,first pass,0.6105393005566978,0.5872762417009832,0.1361760660247593,0.5736754966887417,0.22010481181515,6295.0,693.0,4396.0,515.0
+0,xgboost,test,f2_weighted,under_sample,tuned best F2,first pass,0.6339347261168367,0.3723287439817552,0.1118665018541409,0.7862728062554301,0.1958662482415323,3503.0,905.0,7185.0,246.0
+0,sgd,train,base,under_sample,None,,0.5896666362232262,,,,,,,,
+0,sgd,train,base,SMOTE,None,,0.5551387371348009,,,,,,,,
+0,svc,train,base,under_sample,None,,0.6441716021405917,,,,,,,,
