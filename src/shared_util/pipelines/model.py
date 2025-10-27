@@ -244,6 +244,10 @@ class ModelPipeline:
     def test(self, use_f2_threshold=True, show_plot=True,show_duration_info:bool = True,):
         if self.randomized_search is None:
             raise EnvironmentError("Must run hyperparam search first")
+        
+        if not self.validated:
+            raise EnvironmentError("Must validate before test")
+
         from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
         from shared_util.metrics.printing import print_metrics
         t0 = time.perf_counter()
@@ -292,6 +296,7 @@ class ModelPipeline:
     def validate(self, show_duration_info:bool = True,):
         if self.randomized_search is None:
             raise EnvironmentError("Must run hyperparam search first")
+            
         from shared_util.metrics.scoring import get_scores
         t0 = time.perf_counter()
         # Convenience alias, mirrors the RandomizedSearchCV instance produced by tuning.
@@ -319,6 +324,8 @@ class ModelPipeline:
             log=self.LOG,
             
         )
+
+        self.validated = True
 
         if show_duration_info:
             self._print_dur(t0)
