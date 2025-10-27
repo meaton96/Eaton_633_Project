@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 from typing import Dict, List, Any
-
+import time
 # High-level helpers for configuring preprocessing and running model baselines.
 
 
@@ -99,11 +99,160 @@ class ModelPipeline:
         
         self.model = model
 
-    def predict(self):
+    def permute_importance(self, print_num=15, plot=True,show_duration_info:bool = True,):
+        from sklearn.inspection import permutation_importance
+        t0 = time.perf_counter()
+
+        def plot_feature_importance(df, col1, col2, size, title):
+            import matplotlib.pyplot as plt
+            plt.figure(figsize=(10,6))
+            plt.barh(df[col1][:size][::-1], df[col2][:size][::-1])
+            plt.title(title)
+            plt.xlabel("Importance")
+            plt.tight_layout()
+            plt.show()
+
+        def _transform_through_inference_steps(pipe, X, model_step='model'):
+            """
+            Apply only transform-capable steps in a fitted imblearn Pipeline.
+            Skip any sampler (fit_resample-only). Stop before the final estimator.
+            """
+            Xt = X
+            for name, step in pipe.steps:
+                if name == model_step:
+                    break
+                # Skip samplers (no transform)
+                if hasattr(step, "fit_resample"):
+                    continue
+                if hasattr(step, "transform"):
+                    Xt = step.transform(Xt)
+                else:
+                    # Non-sampler but also no transform? treat as passthrough
+                    pass
+            return Xt
+        
+
+        def cv_permutation_importance(
+            pipe_factory, X, y, cv, groups=None,
+            scoring="roc_auc", n_repeats=10, n_jobs=-1, random_state=42,
+            model_step='model', prep_step='preprocessor'
+        ):
+            perm_means = []
+            feat_names = None
+
+            for tr_idx, va_idx in cv.split(X, y, groups):
+                X_tr, y_tr = X.iloc[tr_idx], y.iloc[tr_idx]
+                X_va, y_va = X.iloc[va_idx], y.iloc[va_idx]
+
+                pipe = pipe_factory()
+                pipe.fit(X_tr, y_tr)
+
+                # Transform validation through inference-capable steps
+                Xt_va = _transform_through_inference_steps(pipe, X_va, model_step=model_step)
+
+                # Get names from the preprocessor if available; otherwise fallback
+                preproc = pipe.named_steps.get(prep_step)
+                if hasattr(preproc, "get_feature_names_out"):
+                    feat_names_fold = np.asarray(preproc.get_feature_names_out(), dtype=object)
+                else:
+                    feat_names_fold = np.array([f"x{i}" for i in range(Xt_va.shape[1])], dtype=object)
+
+                if feat_names is None:
+                    feat_names = feat_names_fold
+                else:
+                    if len(feat_names) != len(feat_names_fold):
+                        raise RuntimeError("Transformed feature count changed across folds; pipeline not schema-stable.")
+
+                model = pipe.named_steps[model_step]
+
+                r = permutation_importance(
+                    model, Xt_va, y_va,
+                    scoring=scoring, n_repeats=n_repeats,
+                    n_jobs=n_jobs, random_state=random_state
+                )
+                perm_means.append(r.importances_mean) #type: ignore
+
+            arr = np.vstack(perm_means)
+            df = pd.DataFrame({
+                "feature": feat_names,
+                "importance_mean": arr.mean(axis=0),
+                "importance_std": arr.std(axis=0)
+            }).sort_values("importance_mean", ascending=False)
+            return df
+        
+        _perm_imp = cv_permutation_importance(
+            pipe_factory=self._pipe_factory,
+            X=self.X_train,
+            y=self.y_train,
+            cv=self._make_group_cv(),
+            groups=self.X_train[self.group_by_col]
+        )
+
+        print(_perm_imp.head(print_num))
+
+        if plot:
+            plot_feature_importance(
+                _perm_imp, 
+                'feature', 
+                'importance_mean', 
+                print_num, 
+                f'Permutation Importance ({self.model})')
+            
+        if show_duration_info:
+            self._print_dur(t0)
+
+
+
+
+    def test(self, use_f2_threshold=True, show_plot=True,show_duration_info:bool = True,):
+        if self.randomized_search is None:
+            raise EnvironmentError("Must run hyperparam search first")
+        from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
+        from shared_util.metrics.printing import print_metrics
+        t0 = time.perf_counter()
+        _val_scores = get_scores(self.randomized_search.best_estimator_, self.X_validate)
+
+        if use_f2_threshold:
+            info = best_threshold_by_fbeta(self.y_validate, _val_scores)
+
+            best_thresh = info['threshold']
+
+            print(f"Best threshold (F2): {best_thresh:.4f}")
+            print(f"Precision: {info['precision']:.3f}  Recall: {info['recall']:.3f}  F2: {info['fbeta']:.3f}")
+
+            if show_plot:
+                plot_scoring(info['curve'])
+        
+
+            _test_scores = get_scores(self.randomized_search.best_estimator_, self.X_test)
+            
+            y_pred = (_test_scores >= best_thresh).astype(int)
+        else:
+            _test_scores = get_scores(self.randomized_search.best_estimator_, self.X_test)
+            y_pred = self.randomized_search.best_estimator_.predict(self.X_test) #type: ignore
+
+        print_metrics(
+            y_true=self.y_test,
+            y_pred=y_pred,
+            y_proba=_test_scores,
+            run_id=self.METRICS_DB_ID,
+            metrics_notes=self.METRIC_NOTES,
+            data='test',
+            threshold_notes='f2_weighted' if use_f2_threshold else 'baseline',
+            model=self.model,
+            hyperparam_notes='tuned_best_roc_auc',
+            pipeline_notes='under_sample',
+            log=self.LOG
+        )
+        if show_duration_info:
+            self._print_dur(t0)
+
+
+    def validate(self, show_duration_info:bool = True,):
         if self.randomized_search is None:
             raise EnvironmentError("Must run hyperparam search first")
         from shared_util.metrics.scoring import get_scores
-        from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
+        t0 = time.perf_counter()
         _rs = self.randomized_search
 
 
@@ -124,16 +273,14 @@ class ModelPipeline:
             data='validate',
             hyperparam_notes=f'tuned best {self.param_scoring}',
             pipeline_notes='under_sample',
-            log=self.LOG
+            log=self.LOG,
+            
         )
 
-    def _make_group_cv(self, n_splits=5):
-        from sklearn.model_selection import StratifiedGroupKFold
-        return StratifiedGroupKFold(
-            n_splits=n_splits,
-            shuffle=True,
-            random_state=self.random_state
-        )
+        if show_duration_info:
+            self._print_dur(t0)
+
+    
         
 
     def run_hyperparam_search(self,
@@ -141,9 +288,10 @@ class ModelPipeline:
                  param_scoring='roc_auc',
                  n_iter = 30,
                  n_jobs = -1,
-                 refit=True
+                 refit=True,
+                 show_duration_info=True
                               ):
-        
+        t0 = time.perf_counter()
         from sklearn.model_selection import RandomizedSearchCV
 
         rs = RandomizedSearchCV(
@@ -183,8 +331,9 @@ class ModelPipeline:
                 hyperparam_text=str(rs.best_params_)
             )
 
-        # return rs, res_df
-
+        
+        if show_duration_info:
+            self._print_dur(t0)
 
         
     
@@ -193,7 +342,10 @@ class ModelPipeline:
     def run_baseline(self,
                  run_undersampler: bool = True,
                  run_smote: bool = True,
+                 show_duration_info:bool = True,
                  ):
+        
+        t0 = time.perf_counter()
 
         _model = self._model_factory(
             model=self.model,
@@ -234,9 +386,23 @@ class ModelPipeline:
         if run_undersampler:
             from imblearn.under_sampling import RandomUnderSampler
             print('-----Undersample Baseline-----')
-            _run_model('under_sample', RandomUnderSampler(random_state=self.random_state)),
+            _run_model('under_sample', RandomUnderSampler(random_state=self.random_state))
+    
 
+        if show_duration_info:
+            self._print_dur(t0)
+        
 
+    def _make_group_cv(self, n_splits=5):
+        from sklearn.model_selection import StratifiedGroupKFold
+        return StratifiedGroupKFold(
+            n_splits=n_splits,
+            shuffle=True,
+            random_state=self.random_state
+        )
+    
+    def _print_dur(self, t0 = 0.0):
+        print(f'{(time.perf_counter() - t0):,.1f}')
     
 
     def _model_factory(self, model:str, **kwargs):
