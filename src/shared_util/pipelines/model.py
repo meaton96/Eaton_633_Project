@@ -8,10 +8,35 @@ import time
 MODELS = ['rf', 'svc', 'sgd', 'xgb']
 
 class ModelPipeline:
+    """
+    Represents a pipeline to test a model
+
+    Contains setup in a constructor including reading data in and splitting test,val,train sets
+
+    Contains class methods for the following:
+        Perumation Importance of Features + graphing
+        Baseline testing SMOTE vs Random Undersampling
+        Hyperparameter sweeping with desired parameter distribution
+        Validation using best estimator from sweep, with optional f2 score calculation
+        Test using held out test data using either base threshold of f2 weighted score
+
+        Printing metrics of each step ROC_AUC, prec, acc, recall, confusion matrics, classification report
+
+        Baseline is tested in 10 fold cross validation
+        
+        Hyperparam tuning is done using RandomizedSearch with 5 folds
+
+        All data is grouped by patient_nbr to handle duplicate patient encounters
+    """
 
     
 
     class PreprocessorSettings:
+        """
+        Holds information about preprocessor settings for this pipeline
+
+        Contains factory() to create a new preprocesser with the set settings as needed
+        """
         create_interactions: bool = True
         log_transform_cols: np.ndarray | None
 
@@ -66,16 +91,22 @@ class ModelPipeline:
                  scale: bool = False,
                  group_by_col='patient_nbr'
                  ) -> None:
+        """
+        Create a new pipeline
+        """
+        # Persist runtime configuration so we can trace every experiment.
         self.LOG = log
         self.METRIC_NOTES = metrics_notes
         self.data_path = data_path
         self.METRICS_DB_ID = metrics_db_id 
         self.random_state = random_state
         self.group_by_col = group_by_col
+        # Lazily attach a scaler because only some models benefit from it.
         if scale:
             from sklearn.preprocessing import StandardScaler
             self.scaler = StandardScaler()
 
+        # Load the requested dataset and perform the grouped train/validate/test split.
         from shared_util.dataio import load_csv
         from shared_util.split import group_split
         _df = load_csv(data_path)
@@ -84,6 +115,7 @@ class ModelPipeline:
 
 
         if plot_y_dist:
+            # Quick sanity check: make sure the target distribution is stable across splits.
             from shared_util.metrics.printing import check_y_dist
             check_y_dist(
                 self.y_train,
@@ -91,6 +123,7 @@ class ModelPipeline:
                 self.y_test
             )
 
+        # Freeze preprocessing options inside a helper so we can rebuild identical cleaners on demand.
         self.preprocessor_settings = self.PreprocessorSettings(
             create_interactions=create_interactions,
             log_transform_cols=log_transform_cols
@@ -137,6 +170,7 @@ class ModelPipeline:
             scoring="roc_auc", n_repeats=10, n_jobs=-1, random_state=42,
             model_step='model', prep_step='preprocessor'
         ):
+            # Compute permutation importance fold by fold so samplers respect the group structure.
             perm_means = []
             feat_names = None
 
@@ -144,6 +178,7 @@ class ModelPipeline:
                 X_tr, y_tr = X.iloc[tr_idx], y.iloc[tr_idx]
                 X_va, y_va = X.iloc[va_idx], y.iloc[va_idx]
 
+                # Rebuild a fresh pipeline each iteration to avoid cross-fold leakage.
                 pipe = pipe_factory()
                 pipe.fit(X_tr, y_tr)
 
@@ -165,6 +200,7 @@ class ModelPipeline:
 
                 model = pipe.named_steps[model_step]
 
+                # Measure how sensitive the fitted model is to each feature on this fold.
                 r = permutation_importance(
                     model, Xt_va, y_va,
                     scoring=scoring, n_repeats=n_repeats,
@@ -180,6 +216,7 @@ class ModelPipeline:
             }).sort_values("importance_mean", ascending=False)
             return df
         
+        # Aggregate the per-fold importances into a single ranked table.
         _perm_imp = cv_permutation_importance(
             pipe_factory=self._pipe_factory,
             X=self.X_train,
@@ -210,9 +247,11 @@ class ModelPipeline:
         from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
         from shared_util.metrics.printing import print_metrics
         t0 = time.perf_counter()
+        # Score the validation split so we can choose a threshold off the ROC curve.
         _val_scores = get_scores(self.randomized_search.best_estimator_, self.X_validate)
 
         if use_f2_threshold:
+            # Treat recall as more important than precision by default (F2).
             info = best_threshold_by_fbeta(self.y_validate, _val_scores)
 
             best_thresh = info['threshold']
@@ -228,9 +267,11 @@ class ModelPipeline:
             
             y_pred = (_test_scores >= best_thresh).astype(int)
         else:
+            # Fall back to the estimator's native threshold if we skip F2 tuning.
             _test_scores = get_scores(self.randomized_search.best_estimator_, self.X_test)
             y_pred = self.randomized_search.best_estimator_.predict(self.X_test) #type: ignore
 
+        # Reuse the same metric printer that logs as needed.
         print_metrics(
             y_true=self.y_test,
             y_pred=y_pred,
@@ -253,9 +294,11 @@ class ModelPipeline:
             raise EnvironmentError("Must run hyperparam search first")
         from shared_util.metrics.scoring import get_scores
         t0 = time.perf_counter()
+        # Convenience alias, mirrors the RandomizedSearchCV instance produced by tuning.
         _rs = self.randomized_search
 
 
+        # Pull calibrated probabilities and convert them to hard labels via the tuned estimator.
         y_proba =get_scores(_rs, self.X_validate)
         y_pred = rs.best_estimator_.predict(self.X_validate) #type: ignore
 
@@ -294,6 +337,7 @@ class ModelPipeline:
         t0 = time.perf_counter()
         from sklearn.model_selection import RandomizedSearchCV
 
+        # Build a full pipeline so tuning evaluates preprocessing, sampling, and the estimator together.
         rs = RandomizedSearchCV(
             estimator=self._pipe_factory(self.model),
             param_distributions=hyperparam_dist,
@@ -305,6 +349,7 @@ class ModelPipeline:
             cv=self._make_group_cv()
         )
 
+        # Group-aware fit ensures we never leak a patient's encounters across folds.
         rs.fit(
             self.X_train,
             self.y_train,
@@ -319,6 +364,7 @@ class ModelPipeline:
         res_df = pd.DataFrame(rs.cv_results_).sort_values('rank_test_score').reset_index(drop=True)
         res_df[['rank_test_score','mean_test_score','std_test_score','params']].head(10)
 
+        # Persist tuning artifacts so downstream steps (validate/test) can reuse the best estimator.
         self.randomized_search = rs
         self.rs_df = res_df
         self.param_scoring = param_scoring
@@ -347,6 +393,7 @@ class ModelPipeline:
         
         t0 = time.perf_counter()
 
+        # Build a single estimator that each sampling strategy will pair with.
         _model = self._model_factory(
             model=self.model,
             random_state=self.random_state
@@ -381,11 +428,13 @@ class ModelPipeline:
         if run_smote:
             from imblearn.over_sampling import SMOTE
             print('--------SMOTE Baseline--------')
+            # Compare against an oversampling strategy that synthesizes minority examples.
             _run_model('smote', SMOTE(random_state=self.random_state))        
 
         if run_undersampler:
             from imblearn.under_sampling import RandomUnderSampler
             print('-----Undersample Baseline-----')
+            # Also measure performance when we downsample the majority class.
             _run_model('under_sample', RandomUnderSampler(random_state=self.random_state))
     
 
@@ -402,7 +451,7 @@ class ModelPipeline:
         )
     
     def _print_dur(self, t0 = 0.0):
-        print(f'{(time.perf_counter() - t0):,.1f}')
+        print(f'Duration: {(time.perf_counter() - t0):,.1f} seconds')
     
 
     def _model_factory(self, model:str, **kwargs):
@@ -426,6 +475,7 @@ class ModelPipeline:
     def _pipe_factory(self, model:str, random_state=42, sampler='under', **kwargs):
         from imblearn.pipeline import Pipeline
 
+        # Choose the sampling strategy while keeping the interface consistent.
         if sampler == 'under':
             from imblearn.under_sampling import RandomUnderSampler
             _sampler = RandomUnderSampler(random_state=random_state)
@@ -440,6 +490,7 @@ class ModelPipeline:
         steps = [("preprocessor",_pre), ("sampler", _sampler)]
 
         if self.scaler is not None:
+            # Append scaling only when explicitly requested; avoids double scaling in nested pipelines.
             steps.append(("scaler", self.scaler))
 
         steps.append(("model", _model))
