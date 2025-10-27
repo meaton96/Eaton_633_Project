@@ -1,7 +1,7 @@
 from sklearn.metrics import make_scorer, roc_auc_score
 from imblearn.pipeline import Pipeline
 from sklearn.model_selection import cross_val_score, StratifiedGroupKFold
-from shared_util.pipeline import CleaningPipeline
+from shared_util.pipelines.cleaning import CleaningPipeline
 
 def make_group_cv():
     return StratifiedGroupKFold(
@@ -60,10 +60,12 @@ def get_baseline_score(
         n_jobs=-1,
         scoring=scorer,
         error_score="raise"
-    )
+    )   
 
-    print(f'{scorer} score per fold: ', scores)
-    print(f'mean {scorer} score: ', scores.mean())
+    import numpy as np
+
+    print(f'{scorer} score per fold: ', np.round(scores, 3))
+    print(f'mean {scorer} score: , {scores.mean():.3f}')
     return scores.mean()
 
 
