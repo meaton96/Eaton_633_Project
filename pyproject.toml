@@ -22,7 +22,7 @@ dependencies = [
     "imbalanced-learn",
     "joblib",
     "threadpoolctl",
-    "xgboost"
+    "xgboost",
 
     # General utilities
     "requests",
