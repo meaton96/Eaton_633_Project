@@ -68,7 +68,9 @@ class ModelPipeline:
     random_state: int = 42
     scaler: Any | None = None
     hyperparam_dist: Dict[str, Any]
-
+    tuned: bool = False
+    validated: bool = False
+    param_scoring:str='roc_auc'
 
 
         
@@ -179,7 +181,7 @@ class ModelPipeline:
                 X_va, y_va = X.iloc[va_idx], y.iloc[va_idx]
 
                 # Rebuild a fresh pipeline each iteration to avoid cross-fold leakage.
-                pipe = pipe_factory()
+                pipe = pipe_factory(self.model)
                 pipe.fit(X_tr, y_tr)
 
                 # Transform validation through inference-capable steps
@@ -225,7 +227,9 @@ class ModelPipeline:
             groups=self.X_train[self.group_by_col]
         )
 
-        print(_perm_imp.head(print_num))
+        from IPython.display import display
+
+        display(_perm_imp.head(print_num))
 
         if plot:
             plot_feature_importance(
@@ -241,18 +245,37 @@ class ModelPipeline:
 
 
 
-    def test(self, use_f2_threshold=True, show_plot=True,show_duration_info:bool = True,):
-        if self.randomized_search is None:
-            raise EnvironmentError("Must run hyperparam search first")
+    def test(self, 
+             use_f2_threshold=True, 
+             show_plot=True,
+             show_duration_info:bool = False,
+             use_local_model=False,
+             **kwargs
+             ):
         
-        if not self.validated:
+        
+        if (not self.validated or not self.tuned) and not use_local_model:
             raise EnvironmentError("Must validate before test")
+        
+        
 
         from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
         from shared_util.metrics.printing import print_metrics
+
+
+        if use_local_model:
+            _model = self._pipe_factory(
+                model=self.model,
+                random_state=self.random_state,
+                sampler='under',
+                **kwargs
+                )
+            _model.fit(self.X_train, self.y_train)
+        else:
+            _model = self.randomized_search.best_estimator_
         t0 = time.perf_counter()
         # Score the validation split so we can choose a threshold off the ROC curve.
-        _val_scores = get_scores(self.randomized_search.best_estimator_, self.X_validate)
+        _val_scores = get_scores(_model, self.X_validate)
 
         if use_f2_threshold:
             # Treat recall as more important than precision by default (F2).
@@ -267,13 +290,13 @@ class ModelPipeline:
                 plot_scoring(info['curve'])
         
 
-            _test_scores = get_scores(self.randomized_search.best_estimator_, self.X_test)
+            _test_scores = get_scores(_model, self.X_test)
             
             y_pred = (_test_scores >= best_thresh).astype(int)
         else:
             # Fall back to the estimator's native threshold if we skip F2 tuning.
-            _test_scores = get_scores(self.randomized_search.best_estimator_, self.X_test)
-            y_pred = self.randomized_search.best_estimator_.predict(self.X_test) #type: ignore
+            _test_scores = get_scores(_model, self.X_test)
+            y_pred = _model.predict(self.X_test) #type: ignore
 
         # Reuse the same metric printer that logs as needed.
         print_metrics(
@@ -293,19 +316,32 @@ class ModelPipeline:
             self._print_dur(t0)
 
 
-    def validate(self, show_duration_info:bool = True,):
-        if self.randomized_search is None:
+    def validate(self, 
+                 show_duration_info:bool = False,
+                 use_local_model=False,
+                 **kwargs
+                 ):
+        if not self.tuned and not use_local_model:
             raise EnvironmentError("Must run hyperparam search first")
             
         from shared_util.metrics.scoring import get_scores
         t0 = time.perf_counter()
-        # Convenience alias, mirrors the RandomizedSearchCV instance produced by tuning.
-        _rs = self.randomized_search
+        
+        if use_local_model:
+            _model = self._pipe_factory(
+                model=self.model,
+                random_state=self.random_state,
+                sampler='under',
+                **kwargs
+                )
+            _model.fit(self.X_train, self.y_train)
+        else:
+            _model = self.randomized_search.best_estimator_
 
 
         # Pull calibrated probabilities and convert them to hard labels via the tuned estimator.
-        y_proba =get_scores(_rs, self.X_validate)
-        y_pred = rs.best_estimator_.predict(self.X_validate) #type: ignore
+        y_proba = get_scores(_model, self.X_validate)
+        y_pred = _model.predict(self.X_validate) #type: ignore
 
         print(f"Held out validation metrics: {(self.model)}")
 
@@ -319,7 +355,7 @@ class ModelPipeline:
             run_id=self.METRICS_DB_ID,
             model=self.model,
             data='validate',
-            hyperparam_notes=f'tuned best {self.param_scoring}',
+            hyperparam_notes=f'tuned best {(self.param_scoring)}',
             pipeline_notes='under_sample',
             log=self.LOG,
             
@@ -375,6 +411,7 @@ class ModelPipeline:
         self.randomized_search = rs
         self.rs_df = res_df
         self.param_scoring = param_scoring
+        self.tuned = True
 
         if self.LOG:
             from shared_util.log import log_hyperparameters
@@ -458,7 +495,21 @@ class ModelPipeline:
         )
     
     def _print_dur(self, t0 = 0.0):
-        print(f'Duration: {(time.perf_counter() - t0):,.1f} seconds')
+
+        def _fmt_time(dur):
+            total_seconds_int = int(dur)
+
+            minutes, seconds = divmod(total_seconds_int, 60)
+            hours, minutes = divmod(minutes, 60)
+
+            fractional_seconds = dur - total_seconds_int
+            seconds += fractional_seconds
+
+            return f'{hours} hrs, {minutes} mins, {seconds:.1f} secs'
+
+        
+
+        print(f'Duration: {_fmt_time(time.perf_counter() - t0)}')
     
 
     def _model_factory(self, model:str, **kwargs):
@@ -475,7 +526,11 @@ class ModelPipeline:
             case 'svc':
                 return SVC(**kwargs)
             case 'xgb':
-                return XGBClassifier(**kwargs)
+                return XGBClassifier(objective='binary:logistic',
+                                     tree_method='hist', 
+                                     eval_metric='auc',
+                                     device='cuda',
+                                     **kwargs)
             case _:
                 raise ValueError(f"Unknown model '{model}'")
             
