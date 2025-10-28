@@ -71,7 +71,7 @@ class ModelPipeline:
     tuned: bool = False
     validated: bool = False
     param_scoring:str='roc_auc'
-
+    use_pca: bool = False
 
         
 
@@ -91,7 +91,8 @@ class ModelPipeline:
                  log_transform_cols: np.ndarray | None = None,
                  model: str = 'rf',
                  scale: bool = False,
-                 group_by_col='patient_nbr'
+                 group_by_col='patient_nbr',
+                 use_pca: bool = False,
                  ) -> None:
         """
         Create a new pipeline
@@ -103,6 +104,7 @@ class ModelPipeline:
         self.METRICS_DB_ID = metrics_db_id 
         self.random_state = random_state
         self.group_by_col = group_by_col
+        self.use_pca = use_pca
         # Lazily attach a scaler because only some models benefit from it.
         if scale:
             from sklearn.preprocessing import StandardScaler
@@ -242,9 +244,6 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
-
-
-
     def test(self, 
              use_f2_threshold=True, 
              show_plot=True,
@@ -315,7 +314,6 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
-
     def validate(self, 
                  show_duration_info:bool = False,
                  use_local_model=False,
@@ -365,9 +363,6 @@ class ModelPipeline:
 
         if show_duration_info:
             self._print_dur(t0)
-
-    
-        
 
     def run_hyperparam_search(self,
                  hyperparam_dist = {},
@@ -425,10 +420,6 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
-        
-    
-
-
     def run_baseline(self,
                  run_undersampler: bool = True,
                  run_smote: bool = True,
@@ -485,7 +476,6 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
         
-
     def _make_group_cv(self, n_splits=5):
         from sklearn.model_selection import StratifiedGroupKFold
         return StratifiedGroupKFold(
@@ -511,7 +501,6 @@ class ModelPipeline:
 
         print(f'Duration: {_fmt_time(time.perf_counter() - t0)}')
     
-
     def _model_factory(self, model:str, **kwargs):
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.linear_model import SGDClassifier
@@ -552,8 +541,12 @@ class ModelPipeline:
         steps = [("preprocessor",_pre), ("sampler", _sampler)]
 
         if self.scaler is not None:
-            # Append scaling only when explicitly requested; avoids double scaling in nested pipelines.
             steps.append(("scaler", self.scaler))
+
+        if self.use_pca:
+            from sklearn.decomposition import PCA
+            pca = PCA(n_components=0.95)
+            steps.append(('PCA', pca))
 
         steps.append(("model", _model))
 
