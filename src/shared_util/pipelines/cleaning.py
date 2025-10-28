@@ -310,7 +310,10 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                                         'gender',
                                         'a1c_group',
                                         'glucose_group',
-                                        'admit_type_group'
+                                        'admit_type_group',
+                                        'v_outpatient_group',
+                                        'v_emergency_group',
+                                        'v_inpatient_group'
                                     ],
                                     dtype=int)
         
@@ -328,7 +331,10 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                     'age',
                     'A1Cresult',
                     'max_glu_serum',
-                    'admission_type_id'
+                    'admission_type_id',
+                    'number_inpatient',
+                    'number_outpatient',
+                    'number_emergency'
                     ])
 
     def bin_categories(self):
@@ -493,6 +499,18 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 return 'elective'
             return 'other'
         
+        # bin number outpatient
+        def bin_procedure_cols(num: int) -> str:
+            if num == 0:
+                return 'none'
+            if num == 1:
+                return 'one'
+            if num in [2,3]:
+                return 'few'
+            if num < 8:
+                return 'several'
+            return 'frequent'
+        
 
 
         self.X['diag1_group'] = self.X['diag_1'].apply(icd9_to_group)
@@ -506,7 +524,9 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self.X['a1c_group'] = self.X['A1Cresult'].apply(bin_a1c)
         self.X['glucose_group'] = self.X['max_glu_serum'].apply(bin_glucose)
         self.X['admit_type_group'] = self.X['admission_type_id'].apply(bin_admit_type)
-
+        self.X['v_outpatient_group'] = self.X['number_outpatient'].apply(bin_procedure_cols)
+        self.X['v_emergency_group'] = self.X['number_emergency'].apply(bin_procedure_cols)
+        self.X['v_inpatient_group'] = self.X['number_inpatient'].apply(bin_procedure_cols)
     
 
 

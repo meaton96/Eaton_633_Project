@@ -57,18 +57,48 @@ def fetch_metric(run_id: int) -> pd.DataFrame:
         """
     )
 
-    with engine.connect() as conn:
-        result = conn.execute(query, {"run_id": run_id})
-        rows = result.fetchall()
-        columns = result.keys()
+    return _connect_and_get(query, run_id=run_id).sort_values(by='roc_auc', ascending=False)
 
-    if not rows:
-        return pd.DataFrame()
+def fetch_all_metrics() -> pd.DataFrame:
+    query = text(
+        """
+        SELECT
+            run_id,
+            model,
+            data,
+            threshold_notes,
+            pipeline_notes,
+            hyperparam_notes,
+            notes,
+            roc_auc,
+            accuracy,
+            precision,
+            recall,
+            f1,
+            tn,
+            tp,
+            fp,
+            fn,
+            created_at
+        FROM metrics
+        ORDER BY created_at DESC
+        """
+    )
 
-    return pd.DataFrame(rows, columns=columns).sort_values(by='roc_auc', ascending=False) #type: ignore
+    return _connect_and_get(query).sort_values(by='roc_auc', ascending=False)
 
+def fetch_all_params() -> pd.DataFrame:
+    query=text("""
+    SELECT
+    model,
+    hyperparam_text
+    FROM hyperparameters
+    ORDER BY created_at DESC
+    """)
 
-def fetch_hyperparams(run_id:int) -> pd.DataFrame:
+    return _connect_and_get(query)
+
+def fetch_params_by_id(run_id:int) -> pd.DataFrame:
     query=text("""
     SELECT
     model,
@@ -78,8 +108,16 @@ def fetch_hyperparams(run_id:int) -> pd.DataFrame:
     ORDER BY created_at DESC
     """)
 
+    return _connect_and_get(query, run_id=run_id)
+    
+    
+def _connect_and_get(query, run_id:int = -1):
+
     with engine.connect() as conn:
-        result = conn.execute(query, {"run_id": run_id})
+        if run_id == -1:
+            result = conn.execute(query)
+        else:
+            result = conn.execute(query, ({"run_id": run_id}))
         rows = result.fetchall()
         columns = result.keys()
 
@@ -87,5 +125,3 @@ def fetch_hyperparams(run_id:int) -> pd.DataFrame:
         return pd.DataFrame()
     
     return pd.DataFrame(rows, columns=columns) #type: ignore 
-    
-    
