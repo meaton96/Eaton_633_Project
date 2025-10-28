@@ -66,3 +66,26 @@ def fetch_metric(run_id: int) -> pd.DataFrame:
         return pd.DataFrame()
 
     return pd.DataFrame(rows, columns=columns) #type: ignore
+
+
+def fetch_hyperparams(run_id:int) -> pd.DataFrame:
+    query=text("""
+    SELECT
+    model,
+    hyperparam_text
+    FROM hyperparameters
+    WHERE run_id = :run_id
+    ORDER BY created_at DESC
+    """)
+
+    with engine.connect() as conn:
+        result = conn.execute(query, {"run_id": run_id})
+        rows = result.fetchall()
+        columns = result.keys()
+
+    if not rows:
+        return pd.DataFrame()
+    
+    return pd.DataFrame(rows, columns=columns) #type: ignore 
+    
+    
