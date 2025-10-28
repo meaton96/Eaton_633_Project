@@ -63,6 +63,7 @@ def fetch_all_metrics() -> pd.DataFrame:
     query = text(
         """
         SELECT
+            id,
             run_id,
             model,
             data,
