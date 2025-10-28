@@ -374,7 +374,8 @@ class ModelPipeline:
                  n_iter = 30,
                  n_jobs = -1,
                  refit=True,
-                 show_duration_info=True
+                 show_duration_info=True,
+                 verbose=1
                               ):
         t0 = time.perf_counter()
         from sklearn.model_selection import RandomizedSearchCV
@@ -388,7 +389,8 @@ class ModelPipeline:
             random_state=self.random_state,
             n_jobs=n_jobs,
             scoring=param_scoring,
-            cv=self._make_group_cv()
+            cv=self._make_group_cv(),
+            verbose=verbose
         )
 
         # Group-aware fit ensures we never leak a patient's encounters across folds.
@@ -517,7 +519,7 @@ class ModelPipeline:
             case 'sgd':
                 return SGDClassifier(**kwargs)
             case 'svc':
-                return SVC(**kwargs)
+                return SVC(kernel='rbf', **kwargs)
             case 'xgb':
                 return XGBClassifier(objective='binary:logistic',
                                      tree_method='hist', 
