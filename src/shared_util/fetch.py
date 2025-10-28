@@ -65,7 +65,7 @@ def fetch_metric(run_id: int) -> pd.DataFrame:
     if not rows:
         return pd.DataFrame()
 
-    return pd.DataFrame(rows, columns=columns) #type: ignore
+    return pd.DataFrame(rows, columns=columns).sort_values(by='roc_auc', ascending=False) #type: ignore
 
 
 def fetch_hyperparams(run_id:int) -> pd.DataFrame:

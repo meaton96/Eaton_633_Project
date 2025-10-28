@@ -90,7 +90,7 @@ class ModelPipeline:
                  create_interactions: bool = True,
                  log_transform_cols: np.ndarray | None = None,
                  model: str = 'rf',
-                 scale: bool = False,
+                 scaler: str | None = None, # standard, power
                  group_by_col='patient_nbr',
                  use_pca: bool = False,
                  ) -> None:
@@ -105,10 +105,14 @@ class ModelPipeline:
         self.random_state = random_state
         self.group_by_col = group_by_col
         self.use_pca = use_pca
+
         # Lazily attach a scaler because only some models benefit from it.
-        if scale:
+        if scaler == 'standard':
             from sklearn.preprocessing import StandardScaler
             self.scaler = StandardScaler()
+        if scaler == 'power':
+            from sklearn.preprocessing import PowerTransformer
+            self.scaler = PowerTransformer(method='yeo-johnson', standardize=True)
 
         # Load the requested dataset and perform the grouped train/validate/test split.
         from shared_util.dataio import load_csv
