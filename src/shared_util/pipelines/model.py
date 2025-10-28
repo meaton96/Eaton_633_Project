@@ -382,7 +382,7 @@ class ModelPipeline:
 
         # Build a full pipeline so tuning evaluates preprocessing, sampling, and the estimator together.
         rs = RandomizedSearchCV(
-            estimator=self._pipe_factory(self.model),
+            estimator=self._pipe_factory(self.model, random_state=self.random_state),
             param_distributions=hyperparam_dist,
             n_iter=n_iter,
             refit=refit,
@@ -426,6 +426,7 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
+
     def run_baseline(self,
                  run_undersampler: bool = True,
                  run_smote: bool = True,
@@ -434,24 +435,20 @@ class ModelPipeline:
         
         t0 = time.perf_counter()
 
-        # Build a single estimator that each sampling strategy will pair with.
-        _model = self._model_factory(
-            model=self.model,
-            random_state=self.random_state
-        )
+        
 
         def _run_model(pipeline_notes, sampler):
             # Local helper so each sampler shares the same preprocessing + logging logic.
             from shared_util.baseline import get_baseline_score
 
+            # Build a single estimator that each sampling strategy will pair with.
+            _pipe = self._pipe_factory(self.model, self.random_state, sampler=sampler)
         
             _roc_auc = get_baseline_score(
-                _model,
-                sampler,
+                pipe=_pipe,
                 X_train=self.X_train,
                 y_train=self.y_train,
-                scaler=self.scaler,
-                preprocessor=self.preprocessor_settings.factory()
+                cv=self._make_group_cv()
             )
 
             if self.LOG:
@@ -470,13 +467,13 @@ class ModelPipeline:
             from imblearn.over_sampling import SMOTE
             print('--------SMOTE Baseline--------')
             # Compare against an oversampling strategy that synthesizes minority examples.
-            _run_model('smote', SMOTE(random_state=self.random_state))        
+            _run_model('smote', 'smote')        
 
         if run_undersampler:
             from imblearn.under_sampling import RandomUnderSampler
             print('-----Undersample Baseline-----')
             # Also measure performance when we downsample the majority class.
-            _run_model('under_sample', RandomUnderSampler(random_state=self.random_state))
+            _run_model('under_sample', 'under')
     
 
         if show_duration_info:
@@ -541,7 +538,7 @@ class ModelPipeline:
             from imblearn.over_sampling import SMOTE
             _sampler = SMOTE(random_state=random_state)
 
-        _model = self._model_factory(model=model, **kwargs)
+        _model = self._model_factory(model=model, random_state=random_state, **kwargs)
         _pre = self.preprocessor_settings.factory()
 
         steps = [("preprocessor",_pre), ("sampler", _sampler)]
