@@ -39,10 +39,16 @@ class ModelPipeline:
         """
         create_interactions: bool = True
         log_transform_cols: np.ndarray | None
+        one_hot_ordinal: bool = True
 
-        def __init__(self, create_interactions=True, log_transform_cols=None) -> None:
+        def __init__(self, 
+                     create_interactions=True, 
+                     log_transform_cols=None,
+                     one_hot_ordinal=True
+                     ) -> None:
             self.create_interactions = create_interactions
             self.log_transform_cols = log_transform_cols
+            self.one_hot_ordinal = one_hot_ordinal
             
             
         def factory(self):
@@ -72,7 +78,7 @@ class ModelPipeline:
     validated: bool = False
     param_scoring:str='roc_auc'
     use_pca: bool = False
-
+    resample: bool = True
         
 
 
@@ -93,6 +99,8 @@ class ModelPipeline:
                  scaler: str | None = None, # standard, power
                  group_by_col='patient_nbr',
                  use_pca: bool = False,
+                 one_hot_ordinal: bool = True,
+                 resample: bool = True
                  ) -> None:
         """
         Create a new pipeline
@@ -105,7 +113,7 @@ class ModelPipeline:
         self.random_state = random_state
         self.group_by_col = group_by_col
         self.use_pca = use_pca
-
+        self.resample = resample
         # Lazily attach a scaler because only some models benefit from it.
         if scaler == 'standard':
             from sklearn.preprocessing import StandardScaler
@@ -134,7 +142,8 @@ class ModelPipeline:
         # Freeze preprocessing options inside a helper so we can rebuild identical cleaners on demand.
         self.preprocessor_settings = self.PreprocessorSettings(
             create_interactions=create_interactions,
-            log_transform_cols=log_transform_cols
+            log_transform_cols=log_transform_cols,
+            one_hot_ordinal=one_hot_ordinal
         )
 
         
@@ -520,7 +529,7 @@ class ModelPipeline:
             case 'xgb':
                 return XGBClassifier(objective='binary:logistic',
                                      tree_method='hist', 
-                                     eval_metric='auc',
+                                     eval_metric='aucpr',
                                      device='cuda',
                                      **kwargs)
             case _:
@@ -528,20 +537,23 @@ class ModelPipeline:
             
     def _pipe_factory(self, model:str, random_state=42, sampler='under', **kwargs):
         from imblearn.pipeline import Pipeline
+        from typing import Tuple
 
-        # Choose the sampling strategy while keeping the interface consistent.
-        if sampler == 'under':
-            from imblearn.under_sampling import RandomUnderSampler
-            _sampler = RandomUnderSampler(random_state=random_state)
-
-        elif sampler == 'smote':
-            from imblearn.over_sampling import SMOTE
-            _sampler = SMOTE(random_state=random_state)
-
-        _model = self._model_factory(model=model, random_state=random_state, **kwargs)
         _pre = self.preprocessor_settings.factory()
+        steps:List[Tuple[str, Any]] = [("preprocessor", _pre)]
 
-        steps = [("preprocessor",_pre), ("sampler", _sampler)]
+        if self.resample:
+            # Choose the sampling strategy while keeping the interface consistent.
+            if sampler == 'under':
+                from imblearn.under_sampling import RandomUnderSampler
+                _sampler = RandomUnderSampler(random_state=random_state)
+
+            elif sampler == 'smote':
+                from imblearn.over_sampling import SMOTE
+                _sampler = SMOTE(random_state=random_state)
+
+            steps.append(("sampler", _sampler))
+        
 
         if self.scaler is not None:
             steps.append(("scaler", self.scaler))
@@ -550,6 +562,8 @@ class ModelPipeline:
             from sklearn.decomposition import PCA
             pca = PCA(n_components=0.95)
             steps.append(('PCA', pca))
+
+        _model = self._model_factory(model=model, random_state=random_state, **kwargs)
 
         steps.append(("model", _model))
 

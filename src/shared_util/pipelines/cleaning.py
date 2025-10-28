@@ -10,9 +10,14 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
     X: pd.DataFrame
 
 
-    def __init__(self, create_interactions=True, log_transform_cols:None | np.ndarray=None) -> None:
+    def __init__(self, 
+                 create_interactions=True, 
+                 log_transform_cols:None | np.ndarray=None,
+                 one_hot_ordinal:bool = True
+                 ) -> None:
         self.create_interactions = create_interactions
         self.log_transform_cols = log_transform_cols
+        self.one_hot_ordinal = one_hot_ordinal
 
 
     def run_pipe(self):
@@ -27,6 +32,26 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
         if self.log_transform_cols is not None and len(self.log_transform_cols) > 0:
             self.log_transform_continous_features()
+
+        if not self.one_hot_ordinal:
+            # transform binned ordinal categories into numeric encodings for tree models
+            mapping = {
+                'none': 0,
+                'one': 1,
+                'few': 3,
+                'several': 6,
+                'frequent': 10
+            }
+
+            ordinal_cols = ['v_outpatient_group', 'v_emergency_group']
+            
+            for col in ordinal_cols:
+                num_col = f"{col}_num"
+                self.X[num_col] = self.X[col].map(mapping).astype('Int64')
+
+            self.X.drop(columns=ordinal_cols, inplace=True)
+            
+
 
     def fit(self, X, y=None):
         X = self._ensure_dataframe(X)
@@ -175,8 +200,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             right_cols=specialty_cols
         )
 
-
-
     def create_numerical_interactions(self):
         for col in self.X.filter(like='diag1_group_'):
             self.X[f'i_hosp_time__{col}'] = self.X[col] * self.X['time_in_hospital']
@@ -206,6 +229,11 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             'glucose_group_':     r'^glucose_group_',
             'admit_type_group_':  r'^admit_type_group_',
         }
+
+        if self.one_hot_ordinal:
+            families['v_outpatient_group'] = r'^v_outpatient_group'
+            families['v_emergency_group'] = r'^v_emergency_group'
+
         refs = {}
         for fam, pat in families.items():
             cols = X.filter(regex=pat).columns
@@ -215,63 +243,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 ref_col = counts.idxmax()
                 refs[fam] = ref_col
         return refs
-
-
-
-    # def drop_old_cols(self):
-
-    #     # drop one col of one_hot cat for each category
-    #     self.X = self.X.drop(
-    #         columns=[
-    #             'diag1_group_circulatory', 
-    #             'specialty_cat_missing', 
-    #             'age_group_30-60', # mid age group
-    #             'race_cat_caucasian', 
-    #             'gender_male', # most common base for medical studies
-    #             'discharge_loc_home', 
-    #             'admission_source_other',
-    #             'a1c_group_no_test',
-    #             'glucose_group_no_test',
-    #             'admit_type_group_emergency'
-                
-    #         ]
-    #     )
-
-
-       
-    #     drug_cols = [
-    #         'metformin', 'repaglinide', 'nateglinide', 'chlorpropamide', 'glimepiride',
-    #         'acetohexamide', 'glipizide', 'glyburide', 'tolbutamide', 'pioglitazone',
-    #         'rosiglitazone', 'acarbose', 'miglitol', 'troglitazone', 'tolazamide',
-    #         'examide', 'citoglipton', 'insulin', 'glyburide-metformin',
-    #         'glipizide-metformin', 'glimepiride-pioglitazone',
-    #         'metformin-rosiglitazone', 'metformin-pioglitazone'
-    #     ]
-    #     # Create the list of flag columns
-    #     flag_cols = [f"{c}_flag" for c in drug_cols]
-
-    #     # keep insulin and metformin columns (binary yes no prescribed)
-    #     flag_cols.remove('metformin_flag')
-    #     flag_cols.remove('insulin_flag')
-
-    #     self.X = self.X.drop(
-    #         columns=[
-    #             'diabetesMed',
-    #             'change'
-    #         ]
-    #     )
-    #     # drop drug columns
-    #     self.X = self.X.drop(
-    #         columns=drug_cols
-    #     )
-
-
-
-    #     self.X = self.X.drop(columns=flag_cols)
-
-
-
-
 
     def handle_drug_cols(self):
         # swap to binary flags
@@ -293,49 +264,51 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         # sum across medicine for amount of medicine prescribed
         self.X['num_drugs'] = self.X[[f'{c}_flag' for c in drug_cols]].sum(axis=1)
 
+    def one_hot_cats(self):
+        columns = [ 'diag1_group', 
+                    'diag2_group', 
+                    'diag3_group', 
+                    'admission_source',
+                    'discharge_loc',
+                    'specialty_cat',
+                    'race_cat',
+                    'age_group',
+                    'gender',
+                    'a1c_group',
+                    'glucose_group',
+                    'admit_type_group',
+                ]
+        
+        if self.one_hot_ordinal:
+            columns.append('v_outpatient_group')
+            columns.append('v_emergency_group')
+
+
         
 
-
-    def one_hot_cats(self):
         # one hot categorical columns
-        self.X = pd.get_dummies(self.X, 
-                            columns=[  'diag1_group', 
-                                        'diag2_group', 
-                                        'diag3_group', 
-                                        'admission_source',
-                                        'discharge_loc',
-                                        'specialty_cat',
-                                        'race_cat',
-                                        'age_group',
-                                        'gender',
-                                        'a1c_group',
-                                        'glucose_group',
-                                        'admit_type_group',
-                                        'v_outpatient_group',
-                                        'v_emergency_group',
-                                        'v_inpatient_group'
-                                    ],
-                                    dtype=int)
+        self.X = pd.get_dummies(self.X, columns=columns, dtype=int)
         
         self.X = self.X.rename(columns={'gender_Female' : 'gender_female', 'gender_Male' : 'gender_male'})
 
     def drop_previous_category_cols(self):
-        self.X = self.X.drop(
-            columns=['diag_1', 
-                    'diag_2', 
-                    'diag_3', 
-                    'admission_source_id',
-                    'discharge_disposition_id',
-                    'medical_specialty',
-                    'race',
-                    'age',
-                    'A1Cresult',
-                    'max_glu_serum',
-                    'admission_type_id',
-                    'number_inpatient',
-                    'number_outpatient',
-                    'number_emergency'
-                    ])
+        columns=['diag_1', 
+                'diag_2', 
+                'diag_3', 
+                'admission_source_id',
+                'discharge_disposition_id',
+                'medical_specialty',
+                'race',
+                'age',
+                'A1Cresult',
+                'max_glu_serum',
+                'admission_type_id',
+                'number_outpatient',
+                'number_emergency'
+                ]
+        
+
+        self.X = self.X.drop(columns=columns)
 
     def bin_categories(self):
         # bin diagnoses into groups 
@@ -526,7 +499,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self.X['admit_type_group'] = self.X['admission_type_id'].apply(bin_admit_type)
         self.X['v_outpatient_group'] = self.X['number_outpatient'].apply(bin_procedure_cols)
         self.X['v_emergency_group'] = self.X['number_emergency'].apply(bin_procedure_cols)
-        self.X['v_inpatient_group'] = self.X['number_inpatient'].apply(bin_procedure_cols)
+        #self.X['v_inpatient_group'] = self.X['number_inpatient'].apply(bin_procedure_cols)
     
 
 
