@@ -39,10 +39,16 @@ class ModelPipeline:
         """
         create_interactions: bool = True
         log_transform_cols: np.ndarray | None
+        one_hot_ordinal: bool = True
 
-        def __init__(self, create_interactions=True, log_transform_cols=None) -> None:
+        def __init__(self, 
+                     create_interactions=True, 
+                     log_transform_cols=None,
+                     one_hot_ordinal=True
+                     ) -> None:
             self.create_interactions = create_interactions
             self.log_transform_cols = log_transform_cols
+            self.one_hot_ordinal = one_hot_ordinal
             
             
         def factory(self):
@@ -72,7 +78,7 @@ class ModelPipeline:
     validated: bool = False
     param_scoring:str='roc_auc'
     use_pca: bool = False
-
+    resample: bool = True
         
 
 
@@ -93,6 +99,8 @@ class ModelPipeline:
                  scaler: str | None = None, # standard, power
                  group_by_col='patient_nbr',
                  use_pca: bool = False,
+                 one_hot_ordinal: bool = True,
+                 resample: bool = True
                  ) -> None:
         """
         Create a new pipeline
@@ -105,7 +113,7 @@ class ModelPipeline:
         self.random_state = random_state
         self.group_by_col = group_by_col
         self.use_pca = use_pca
-
+        self.resample = resample
         # Lazily attach a scaler because only some models benefit from it.
         if scaler == 'standard':
             from sklearn.preprocessing import StandardScaler
@@ -134,7 +142,8 @@ class ModelPipeline:
         # Freeze preprocessing options inside a helper so we can rebuild identical cleaners on demand.
         self.preprocessor_settings = self.PreprocessorSettings(
             create_interactions=create_interactions,
-            log_transform_cols=log_transform_cols
+            log_transform_cols=log_transform_cols,
+            one_hot_ordinal=one_hot_ordinal
         )
 
         
@@ -382,7 +391,7 @@ class ModelPipeline:
 
         # Build a full pipeline so tuning evaluates preprocessing, sampling, and the estimator together.
         rs = RandomizedSearchCV(
-            estimator=self._pipe_factory(self.model),
+            estimator=self._pipe_factory(self.model, random_state=self.random_state),
             param_distributions=hyperparam_dist,
             n_iter=n_iter,
             refit=refit,
@@ -426,6 +435,7 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
+
     def run_baseline(self,
                  run_undersampler: bool = True,
                  run_smote: bool = True,
@@ -434,24 +444,20 @@ class ModelPipeline:
         
         t0 = time.perf_counter()
 
-        # Build a single estimator that each sampling strategy will pair with.
-        _model = self._model_factory(
-            model=self.model,
-            random_state=self.random_state
-        )
+        
 
         def _run_model(pipeline_notes, sampler):
             # Local helper so each sampler shares the same preprocessing + logging logic.
             from shared_util.baseline import get_baseline_score
 
+            # Build a single estimator that each sampling strategy will pair with.
+            _pipe = self._pipe_factory(self.model, self.random_state, sampler=sampler)
         
             _roc_auc = get_baseline_score(
-                _model,
-                sampler,
+                pipe=_pipe,
                 X_train=self.X_train,
                 y_train=self.y_train,
-                scaler=self.scaler,
-                preprocessor=self.preprocessor_settings.factory()
+                cv=self._make_group_cv()
             )
 
             if self.LOG:
@@ -470,13 +476,13 @@ class ModelPipeline:
             from imblearn.over_sampling import SMOTE
             print('--------SMOTE Baseline--------')
             # Compare against an oversampling strategy that synthesizes minority examples.
-            _run_model('smote', SMOTE(random_state=self.random_state))        
+            _run_model('smote', 'smote')        
 
         if run_undersampler:
             from imblearn.under_sampling import RandomUnderSampler
             print('-----Undersample Baseline-----')
             # Also measure performance when we downsample the majority class.
-            _run_model('under_sample', RandomUnderSampler(random_state=self.random_state))
+            _run_model('under_sample', 'under')
     
 
         if show_duration_info:
@@ -523,7 +529,7 @@ class ModelPipeline:
             case 'xgb':
                 return XGBClassifier(objective='binary:logistic',
                                      tree_method='hist', 
-                                     eval_metric='auc',
+                                     eval_metric='aucpr',
                                      device='cuda',
                                      **kwargs)
             case _:
@@ -531,20 +537,23 @@ class ModelPipeline:
             
     def _pipe_factory(self, model:str, random_state=42, sampler='under', **kwargs):
         from imblearn.pipeline import Pipeline
+        from typing import Tuple
 
-        # Choose the sampling strategy while keeping the interface consistent.
-        if sampler == 'under':
-            from imblearn.under_sampling import RandomUnderSampler
-            _sampler = RandomUnderSampler(random_state=random_state)
-
-        elif sampler == 'smote':
-            from imblearn.over_sampling import SMOTE
-            _sampler = SMOTE(random_state=random_state)
-
-        _model = self._model_factory(model=model, **kwargs)
         _pre = self.preprocessor_settings.factory()
+        steps:List[Tuple[str, Any]] = [("preprocessor", _pre)]
 
-        steps = [("preprocessor",_pre), ("sampler", _sampler)]
+        if self.resample:
+            # Choose the sampling strategy while keeping the interface consistent.
+            if sampler == 'under':
+                from imblearn.under_sampling import RandomUnderSampler
+                _sampler = RandomUnderSampler(random_state=random_state)
+
+            elif sampler == 'smote':
+                from imblearn.over_sampling import SMOTE
+                _sampler = SMOTE(random_state=random_state)
+
+            steps.append(("sampler", _sampler))
+        
 
         if self.scaler is not None:
             steps.append(("scaler", self.scaler))
@@ -553,6 +562,8 @@ class ModelPipeline:
             from sklearn.decomposition import PCA
             pca = PCA(n_components=0.95)
             steps.append(('PCA', pca))
+
+        _model = self._model_factory(model=model, random_state=random_state, **kwargs)
 
         steps.append(("model", _model))
 
