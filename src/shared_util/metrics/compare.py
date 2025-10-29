@@ -25,22 +25,25 @@ def rank_runs(
     df: pd.DataFrame,
     metric_cols=("roc_auc","f1","precision","recall","accuracy"),
     greater_is_better: dict[str, bool] | None = None,
-    method: str = "ranksum"  # or "percentile_mean"
+    method: str = "ranksum",  # or "percentile_mean"
+    weights: Optional[dict[str, float]] = None,  # per-metric weights
 ) -> pd.DataFrame:
     """
-    method="ranksum": sum of ranks across metrics, then min-max normalize to [0,1]
-    method="percentile_mean": average per-metric rank percentiles (robust to ties/missing)
+    method="ranksum": weighted sum of ranks across metrics, then min-max normalize to [0,1]
+    method="percentile_mean": weighted average of per-metric rank percentiles (robust to ties/missing)
     """
     metric_cols = list(metric_cols)
     if greater_is_better is None:
         greater_is_better = {m: True for m in metric_cols}
+    if weights is None:
+        # default: everyone gets 1.0 unless you say otherwise
+        weights = {m: 1.0 for m in metric_cols}
 
     out = df[["run_id","label"] + metric_cols].copy()
 
     # Rank each metric: best rank = 1
     for m in metric_cols:
         asc = not greater_is_better.get(m, True)
-        # If column is entirely NaN, make ranks NaN so it doesn't affect scores
         if out[m].notna().any():
             out[f"rank_{m}"] = out[m].rank(ascending=asc, method="min")
         else:
@@ -49,46 +52,69 @@ def rank_runs(
     rank_cols = [f"rank_{m}" for m in metric_cols]
 
     if method == "ranksum":
-        # Sum ranks ignoring NaNs (so a missing metric doesn't torpedo the row)
-        out["rank_sum"] = out[rank_cols].sum(axis=1, min_count=1)
+        # Weighted rank sum (ignore NaNs by filling with 0 weight contribution)
+        w_rank_terms = []
+        for m in metric_cols:
+            w = float(weights.get(m, 1.0))
+            col = out[f"rank_{m}"]
+            w_rank_terms.append(w * col)
 
-        # Best possible sum: all ranks = 1 for metrics that exist
-        # Worst possible sum: sum of column-wise max ranks (scalar!)
-        best_sum = out[rank_cols].apply(lambda c: 1.0 if c.notna().any() else 0.0).sum()
-        worst_sum = out[rank_cols].max(skipna=True).sum()
+        out["rank_sum"] = pd.concat(w_rank_terms, axis=1).sum(axis=1, min_count=1)
+
+        # Compute weighted best and worst possible sums given available columns
+        best_sum = 0.0
+        worst_sum = 0.0
+        for m in metric_cols:
+            w = float(weights.get(m, 1.0))
+            col = out[f"rank_{m}"]
+            if col.notna().any():
+                best_sum += w * 1.0
+                worst_sum += w * float(col.max())
 
         denom = float(worst_sum - best_sum)
-        if denom <= 0:
-            # Degenerate case (e.g., single run or all identical ranks). Fall back to 1s.
+        if denom <= 0 or not np.isfinite(denom):
             out["overall_score"] = 1.0
         else:
             out["overall_score"] = 1.0 - (out["rank_sum"] - best_sum) / denom
 
     elif method == "percentile_mean":
-        # Convert each metric's rank to a 0..1 "badness" percentile, then invert and average
+        # Convert ranks to "goodness" percentiles per metric, then weighted average
         pct_cols = []
-        for rc in rank_cols:
+        for m in metric_cols:
+            rc = f"rank_{m}"
             col = out[rc]
             if col.notna().any():
                 max_r = float(col.max())
                 min_r = float(col.min())
                 span = max(max_r - min_r, 1e-9)
-                bad_pct = (col - min_r) / span           # 0 is best, 1 is worst
-                good_pct = 1.0 - bad_pct                 # 1 is best, 0 is worst
+                bad_pct = (col - min_r) / span
+                good_pct = 1.0 - bad_pct
                 out[rc + "_pct"] = good_pct
-                pct_cols.append(rc + "_pct")
+                pct_cols.append((rc + "_pct", float(weights.get(m, 1.0))))
             else:
                 out[rc + "_pct"] = np.nan
 
-        # Mean of available per-metric percentiles
-        out["overall_score"] = out[pct_cols].mean(axis=1, skipna=True)
+        if pct_cols:
+            cols, wts = zip(*pct_cols)
+            wts = np.array(wts, dtype=float)
+            wts = np.where(np.isfinite(wts), wts, 0.0)
 
+            # Weighted mean across available metrics per row
+            good = out[list(cols)]
+            w_df = pd.DataFrame({c: w for c, w in zip(cols, wts)})
+            num = (good * w_df).sum(axis=1, skipna=True)
+            den = w_df.where(good.notna(), 0.0).sum(axis=1)
+            out["overall_score"] = np.where(den > 0, num / den, np.nan)
+            # if nothing available, set to NaN; sort will shove it down
+        else:
+            out["overall_score"] = np.nan
     else:
         raise ValueError("method must be 'ranksum' or 'percentile_mean'")
 
+    # Sort: overall score desc, then precision, accuracy as tie-breakers, then f1, roc_auc
     return out.sort_values(
-        ["overall_score","roc_auc","f1"],
-        ascending=[False, False, False]
+        ["overall_score", "precision", "accuracy", "f1", "roc_auc"],
+        ascending=[False, False, False, False, False]
     ).reset_index(drop=True)
 
 
@@ -183,11 +209,12 @@ def print_leaderboards(df_ranked: pd.DataFrame, metric_cols: Iterable[str] = DEF
 def compare_runs(
     df: pd.DataFrame,
     metric_cols: Iterable[str] = DEFAULT_METRIC_COLS,
-    title_suffix: str = ""
+    title_suffix: str = "",
+    weights: Optional[dict[str, float]] = None,  # per-metric weights
 ) -> pd.DataFrame:
 
 
-    ranked = rank_runs(df, metric_cols=metric_cols)
+    ranked = rank_runs(df, metric_cols=metric_cols, weights=weights)
 
     # Heatmap of metrics
     plot_metric_heatmap(df, metric_cols=metric_cols, title=f"Metrics per Run {title_suffix}".strip())

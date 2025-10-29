@@ -1,29 +1,58 @@
-import pandas as pd
-import numpy as np
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+def plot_pr_with_break_even(curves, R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0), title=None):
+    # PR: x=recall, y=precision
+    plt.figure()
+    plt.plot(curves["recall"], curves["precision"], label="PR curve")
+    # horizontal break-even precision lines: PPV_break_even = c_m / (e * R)
+    for c in c_m_list:
+        y_be = c / (e * R)
+        plt.hlines(y_be, xmin=0, xmax=1, linestyles="--", label=f"Break-even PPV @ ${int(c)}")
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    if title: plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+def plot_savings_vs_threshold(curves, c_m_list=(500.0, 1000.0, 1500.0), per_1000=True, title=None):
+    scale = 1000.0 if per_1000 else 1.0
+    plt.figure()
+    for c in c_m_list:
+        plt.plot(curves["thresholds"], scale * curves["savings"][c], label=f"${int(c)}")
+    plt.xlabel("Threshold")
+    plt.ylabel(("Savings per 1000 patients ($)" if per_1000 else "Savings per patient ($)"))
+    if title: plt.title(title)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
 
 
-def _filter_duplicates_by_id(df, keep_id):
-    
-    key_cols = ['model', 'data', 'threshold_notes', 'pipeline_notes']
-    
-    
-    duplicated_mask = df.duplicated(subset=key_cols, keep=False)
+def plot_y_dist(y, ax=None, title='Target Variable Distribution'):
+    ax = ax or plt.gca()
+    sns.countplot(x=y, hue=y, ax=ax)
+    ax.set_title(title)
+    ax.set_xlabel('Readmitted')
+    ax.set_ylabel('count')
 
-    duplicates = df[duplicated_mask]
-    uniques = df[~duplicated_mask]
+def check_y_dist(y_train, y_validate, y_test):
     
-    kept_duplicates = duplicates[duplicates['id'] == keep_id]
-    
-    result = pd.concat([uniques, kept_duplicates], ignore_index=True)
-    
-    return result.sort_values(by='roc_auc', ascending=False).reset_index(drop=True)
+    fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
 
+    plot_y_dist(y_train, ax=axes[0], title='Train')
+    plot_y_dist(y_validate, ax=axes[1], title='Validate')
+    plot_y_dist(y_test, ax=axes[2], title='Test')
 
+    plt.tight_layout()
+    plt.show()
+    
 
 def plot_metrics(df, plot_id, metrics = ["roc_auc", "accuracy", "precision", "recall", "f1"]):
     import seaborn as sns
     import matplotlib.pyplot as plt
-    df_filtered = _filter_duplicates_by_id(df, keep_id=plot_id)
+    from shared_util.metrics.util import filter_duplicates_by_id
+    df_filtered = filter_duplicates_by_id(df, keep_id=plot_id)
 
     # ensure model column sorted nicely for consistent colors
     df_filtered["model"] = df_filtered["model"].astype("category")
@@ -74,32 +103,8 @@ def plot_metrics(df, plot_id, metrics = ["roc_auc", "accuracy", "precision", "re
     plot_metrics(validate_df,
                 "Model Comparison on Validation Set (Pre-Threshold Testing)")
 
-    # --- Plot 2: Test (F2-weighted, recall-focused) ---
+    # --- Plot 2: Test
     test_df = melted[melted["data"] == "test"]
     plot_metrics(test_df,
-                "Model Comparison on Held-Out Test Set (F2-Weighted Threshold)",
-                emphasize="recall")
-    
-
-def summary_by_auc(df, plot_id):
-    from IPython.display import display
-
-    df_collapse = _filter_duplicates_by_id(df, plot_id)
-
-    df_collapse = df_collapse.sort_values(by='roc_auc', ascending=False)
-
-    df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
-
-    df_collapse['roc_auc'] = np.round(df_collapse['roc_auc'], 3)
-
-    print('Models by ROC_AUC')
-    display(df_collapse.head(5)[['model', 'roc_auc']])
-
-def summary_by_recall(df):
-    from IPython.display import display
-    df_collapse = df.sort_values(by='recall', ascending=False)
-    df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
-    df_collapse['recall'] = np.round(df_collapse['recall'], 3)
-
-    print('Models by Recall')
-    display(df_collapse.head(5)[['model', 'recall']])
+                "Model Comparison on Held-Out Test Set (Cost Weighted Threshold)",
+                emphasize="precision")

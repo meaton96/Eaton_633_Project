@@ -132,7 +132,7 @@ class ModelPipeline:
 
         if plot_y_dist:
             # Quick sanity check: make sure the target distribution is stable across splits.
-            from shared_util.metrics.printing import check_y_dist
+            from shared_util.metrics.plotting import check_y_dist
             check_y_dist(
                 self.y_train,
                 self.y_validate,
@@ -258,59 +258,103 @@ class ModelPipeline:
             self._print_dur(t0)
 
     def test(self, 
-             use_f2_threshold=True, 
-             show_plot=True,
-             show_duration_info:bool = False,
-             use_local_model=False,
-             **kwargs
-             ):
-        
-        
+         use_f2_threshold=True,
+         use_cost_threshold=False,
+         R: float = 16300.0,
+         e: float = 0.50,
+         c_m_list=(500.0, 1000.0, 1500.0),
+         prefer_c_m: float | None = 1000.0,  # choose None to maximize average
+         show_plot=True,
+         show_duration_info: bool = False,
+         use_local_model=False,
+         **kwargs):
+        """
+        New: use_cost_threshold selects threshold maximizing $ savings on the validate set.
+        - Overlays: PR curve with break-even PPV lines, and savings vs threshold per c_m.
+        - If both use_f2_threshold and use_cost_threshold are True, cost wins. Because money.
+        """
         if (not self.validated or not self.tuned) and not use_local_model:
             raise EnvironmentError("Must validate before test")
-        
-        
 
-        from shared_util.metrics.scoring import get_scores, best_threshold_by_fbeta, plot_scoring
+        import time
+        import numpy as np
+        from shared_util.metrics.scoring import (
+            get_scores, best_threshold_by_fbeta,
+            cost_curves_from_scores, best_threshold_by_cost
+        )
+        from shared_util.metrics.plotting import plot_pr_with_break_even, plot_savings_vs_threshold
         from shared_util.metrics.printing import print_metrics
 
-
+        # Fit or load model
         if use_local_model:
             _model = self._pipe_factory(
                 model=self.model,
                 random_state=self.random_state,
                 sampler='under',
                 **kwargs
-                )
+            )
             _model.fit(self.X_train, self.y_train)
         else:
             _model = self.randomized_search.best_estimator_
+
         t0 = time.perf_counter()
-        # Score the validation split so we can choose a threshold off the ROC curve.
+
+        # 1) Scores on validate for threshold selection
         _val_scores = get_scores(_model, self.X_validate)
 
-        if use_f2_threshold:
-            # Treat recall as more important than precision by default (F2).
-            info = best_threshold_by_fbeta(self.y_validate, _val_scores)
+        threshold_notes = 'baseline'
+        chosen_thresh = None
 
-            best_thresh = info['threshold']
+        if use_cost_threshold:
+            # Build cost curves on validate
+            curves = cost_curves_from_scores(
+                y_true=self.y_validate,
+                y_scores=_val_scores,
+                R=R, e=e, c_m_list=c_m_list
+            )
+            choice = best_threshold_by_cost(curves, prefer_c_m=prefer_c_m)
 
-            print(f"Best threshold (F2): {best_thresh:.4f}")
-            print(f"Precision: {info['precision']:.3f}  Recall: {info['recall']:.3f}  F2: {info['fbeta']:.3f}")
+            chosen_thresh = choice["threshold"]
+            threshold_notes = f'cost_opt_R={int(R)}_e={e:.2f}_c={("avg" if choice["chosen_c_m"] is None else int(choice["chosen_c_m"]))}'
 
+            # Optional overlays
             if show_plot:
+                title = f"PR with break-even PPV lines (R=${int(R)}, e={e:.2f})"
+                plot_pr_with_break_even(curves, R=R, e=e, c_m_list=c_m_list, title=title)
+
+                title2 = f"Savings vs Threshold on validate (per 1000 patients)"
+                plot_savings_vs_threshold(curves, c_m_list=c_m_list, per_1000=True, title=title2)
+
+            print(
+                f"[COST] Chosen threshold: {chosen_thresh:.4f} | "
+                f"PPV={choice['precision']:.3f}  Recall={choice['recall']:.3f}  "
+                f"FlagRate={choice['flag_rate']:.3f}  "
+                f"Savings@{('avg' if choice['chosen_c_m'] is None else '$'+str(int(choice['chosen_c_m'])))}="
+                f"{(np.mean(list(choice['savings_at_c'].values())) if choice['chosen_c_m'] is None else choice['savings_at_c'][choice['chosen_c_m']]):.2f} per patient"
+            )
+
+        elif use_f2_threshold:
+            # legacy F2 optimization path
+            info = best_threshold_by_fbeta(self.y_validate, _val_scores, beta=2.0)
+            chosen_thresh = info['threshold']
+            threshold_notes = 'f2_weighted'
+            if show_plot and 'curve' in info:
+                from shared_util.metrics.scoring import plot_scoring
                 plot_scoring(info['curve'])
-        
+            print(
+                f"[F2] Best threshold: {chosen_thresh:.4f} | "
+                f"Precision={info['precision']:.3f}  Recall={info['recall']:.3f}  F2={info['fbeta']:.3f}"
+            )
 
-            _test_scores = get_scores(_model, self.X_test)
-            
-            y_pred = (_test_scores >= best_thresh).astype(int)
+        # 2) Apply chosen threshold to test (or native predict if neither path)
+        _test_scores = get_scores(_model, self.X_test)
+        if chosen_thresh is not None:
+            y_pred = (_test_scores >= chosen_thresh).astype(int)
         else:
-            # Fall back to the estimator's native threshold if we skip F2 tuning.
-            _test_scores = get_scores(_model, self.X_test)
-            y_pred = _model.predict(self.X_test) #type: ignore
+            y_pred = _model.predict(self.X_test)  # type: ignore
 
-        # Reuse the same metric printer that logs as needed.
+        # 3) Print/log test metrics
+        from shared_util.metrics.printing import print_metrics
         print_metrics(
             y_true=self.y_test,
             y_pred=y_pred,
@@ -318,14 +362,16 @@ class ModelPipeline:
             run_id=self.METRICS_DB_ID,
             metrics_notes=self.METRIC_NOTES,
             data='test',
-            threshold_notes='f2_weighted' if use_f2_threshold else 'baseline',
+            threshold_notes=threshold_notes,
             model=self.model,
             hyperparam_notes='tuned_best_roc_auc',
             pipeline_notes='under_sample',
             log=self.LOG
         )
+
         if show_duration_info:
             self._print_dur(t0)
+
 
     def validate(self, 
                  show_duration_info:bool = False,

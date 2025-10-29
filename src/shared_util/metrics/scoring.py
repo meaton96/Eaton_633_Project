@@ -4,6 +4,96 @@ import matplotlib.pyplot as plt
 from typing import Tuple
 from sklearn.metrics import make_scorer, fbeta_score
 
+def cost_curves_from_scores(
+    y_true, y_scores, 
+    R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0)
+):
+    """
+    Returns PR arrays, thresholds, prevalence, flag_rate, and per-patient savings 
+    curves for each c_m in c_m_list.
+    """
+    precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
+    precision, recall = precision[:-1], recall[:-1]  # align with thresholds
+    p = float(np.mean(y_true))
+
+    # flag_rate = P(flag) = (p * recall) / precision
+    with np.errstate(divide='ignore', invalid='ignore'):
+        flag_rate = np.where(precision > 0, (p * recall) / precision, 0.0)
+
+    savings = {}
+    for c_m in c_m_list:
+        per_patient = flag_rate * (precision * e * R - c_m)
+        savings[c_m] = per_patient
+
+    return {
+        "precision": precision,
+        "recall": recall,
+        "thresholds": thresholds,
+        "prevalence": p,
+        "flag_rate": flag_rate,
+        "savings": savings,   # dict: c_m -> array same length as thresholds
+    }
+
+def best_threshold_by_cost(curves, prefer_c_m=None):
+    """
+    Pick the threshold that maximizes per-patient savings.
+    If prefer_c_m is provided, optimize for that single cost.
+    Otherwise, pick the argmax over the average savings across c_m_list.
+    """
+    c_ms = sorted(curves["savings"].keys())
+    mat = np.column_stack([curves["savings"][c] for c in c_ms])  # T x C
+
+    if prefer_c_m is None:
+        # hedge: maximize mean savings across the cost scenarios
+        agg = np.nanmean(mat, axis=1)
+        j = int(np.nanargmax(agg))
+        chosen_c_m = None
+    else:
+        # pick threshold optimal for the chosen cost
+        idx = c_ms.index(prefer_c_m)
+        j = int(np.nanargmax(mat[:, idx]))
+        chosen_c_m = prefer_c_m
+
+    return {
+        "idx": j,
+        "threshold": float(curves["thresholds"][j]),
+        "precision": float(curves["precision"][j]),
+        "recall": float(curves["recall"][j]),
+        "flag_rate": float(curves["flag_rate"][j]),
+        "savings_at_c": {c: float(curves["savings"][c][j]) for c in c_ms},
+        "chosen_c_m": chosen_c_m,
+        "c_m_list": c_ms,
+    }
+
+def cost_savings_by_threshold(y_true, y_scores, R=16300, c_m=1000, e=0.50):
+    # PR curve returns precision and recall for descending thresholds
+    precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
+    # Align lengths: thresholds has len-1 vs precision/recall
+    precision, recall = precision[:-1], recall[:-1]
+    thresholds = thresholds
+
+    y_true = np.asarray(y_true)
+    p = y_true.mean()
+
+    # We need FPR or flag_rate. We can recover flag_rate from precision & recall:
+    # flag_rate = (p * recall) / precision
+    # Guard division by zero
+    with np.errstate(divide='ignore', invalid='ignore'):
+        flag_rate = np.where(precision > 0, (p * recall) / precision, 0.0)
+
+    # Expected net savings per patient at each threshold
+    per_patient_savings = flag_rate * (precision * e * R - c_m)
+
+    # Package results
+    return {
+        "thresholds": thresholds,
+        "precision": precision,
+        "recall": recall,
+        "flag_rate": flag_rate,
+        "per_patient_savings": per_patient_savings,
+        "best_idx": int(np.nanargmax(per_patient_savings)),
+    }
+
 
 def make_f2_scorer():
     return make_scorer(fbeta_score, beta=2, average='binary')

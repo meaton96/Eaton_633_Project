@@ -3,31 +3,31 @@ from sklearn.metrics import (
     precision_score, recall_score, confusion_matrix,
     classification_report, roc_auc_score
 )
-import matplotlib.pyplot as plt
-import seaborn as sns
+import numpy as np
 
-#from shared_util.metrics import metrics_db
+def summary_by_auc(df, plot_id):
+    from IPython.display import display
+    from shared_util.metrics.util import filter_duplicates_by_id
 
+    df_collapse = filter_duplicates_by_id(df, plot_id)
 
+    df_collapse = df_collapse.sort_values(by='roc_auc', ascending=False)
 
+    df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
 
-def plot_y_dist(y, ax=None, title='Target Variable Distribution'):
-    ax = ax or plt.gca()
-    sns.countplot(x=y, hue=y, ax=ax)
-    ax.set_title(title)
-    ax.set_xlabel('Readmitted')
-    ax.set_ylabel('count')
+    df_collapse['roc_auc'] = np.round(df_collapse['roc_auc'], 3)
 
-def check_y_dist(y_train, y_validate, y_test):
-    
-    fig, axes = plt.subplots(1, 3, figsize=(15, 4), sharey=True)
+    print('Models by ROC_AUC')
+    display(df_collapse.head(5)[['model', 'roc_auc']])
 
-    plot_y_dist(y_train, ax=axes[0], title='Train')
-    plot_y_dist(y_validate, ax=axes[1], title='Validate')
-    plot_y_dist(y_test, ax=axes[2], title='Test')
+def summary_by_recall(df):
+    from IPython.display import display
+    df_collapse = df.sort_values(by='recall', ascending=False)
+    df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
+    df_collapse['recall'] = np.round(df_collapse['recall'], 3)
 
-    plt.tight_layout()
-    plt.show()
+    print('Models by Recall')
+    display(df_collapse.head(5)[['model', 'recall']])
 
 def print_metrics(y_true, 
                   y_pred,
