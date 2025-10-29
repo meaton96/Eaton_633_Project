@@ -1,13 +1,45 @@
+Benbassat, J., & Taragin, M. (2000). Hospital readmissions as a measure of quality of health care: Advantages and limitations. Archives of Internal Medicine, 160(8), 1074-1081. https://doi.org/10.1001/archinte.160.8.1074
+
+Centers for Medicare & Medicaid Services. (n.d.). Physician fee schedule. Retrieved October 29, 2025, from https://www.cms.gov/medicare/payment/fee-schedules/physician
+
+Clore, J., Cios, K., DeShazo, J., & Strack, B. (2014). Diabetes 130-US Hospitals for Years 1999-2008 [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5230J.
+
 Current Health. (2019, May 11). 3 strategies to address the $40 B hospital readmission problem. Current Health Insights Hub. https://currenthealth.com/insights/blog/3-strategies-to-address-the-40b-hospital-readmission-problem/
+
+Dawson, N. L., Hull, B. P., Vijapura, P., Dumitrascu, A. G., Ball, C. T., Thiemann, K. M., Maniaci, M. J., & Burton, M. C. (2021). Home Telemonitoring to Reduce Readmission of High-Risk Patients: a Modified Intention-to-Treat Randomized Clinical Trial. Journal of general internal medicine, 36(11), 3395–3401. https://doi.org/10.1007/s11606-020-06589-1
 
 Emi-Johnson, O. G., & Nkrumah, K. J. (2025). Predicting 30-Day Hospital Readmission in Patients With Diabetes Using Machine Learning on Electronic Health Record Data. Cureus, 17(4), e82437. https://doi.org/10.7759/cureus.82437
 
+Godla, D. (2025, March 17). How remote patient monitoring companies support high-risk patients. ThoroughCare. Retrieved October 29, 2025, from https://www.thoroughcare.net/blog/remote-patient-monitoring-companies
+
 Gregory, N. S., Seley, J. J., Dargar, S. K., Galla, N., Gerber, L. M., & Lee, J. I. (2018). Strategies to Prevent Readmission in High-Risk Patients with Diabetes: the Importance of an Interdisciplinary Approach. Current diabetes reports, 18(8), 54. https://doi.org/10.1007/s11892-018-1027-z
+
+James, J. (2013, November 12). Medicare Hospital Readmissions Reduction Program (Health Policy Brief). Health Affairs. https://doi.org/10.1377/hpb20131112.646839
+
+Jiang, H. J., & Hensche, M. K. (2023, September). Characteristics of 30-day all-cause hospital readmissions, 2016–2020 (HCUP Statistical Brief No. 304). Agency for Healthcare Research & Quality. https://hcup-us.ahrq.gov/reports/statbriefs/sb304-readmissions-2016-2020.pdf
+
+Kokkonen, J., Mustonen, P., Heikkilä, E., Leskelä, R., Pennanen, P., Krühn, K., Jalkanen, A., Laakso, J., Kempers, J., Väisänen, S., & Torkki, P. (2024). Effectiveness of telemonitoring in reducing hospitalization and associated costs for patients with heart failure in Finland: Nonrandomized pre-post telemonitoring study. JMIR mHealth and uHealth, 12, e51841. https://doi.org/10.2196/51841
+
+Le Goff-Pronost, M., & Bongiovanni-Delarozière, I. (2023). Economic evaluation of remote patient monitoring and organizational analysis according to patient involvement: a scoping review. International journal of technology assessment in health care, 39(1), e59. https://doi.org/10.1017/S0266462323002581
 
 Liu, V., Sue, L., & Wu, Y. (2024). Comparison of machine learning models for predicting 30-day readmission rates for patients with diabetes. Journal Of Medical Artificial Intelligence, 7. doi:10.21037/jmai-24-70
 
 Mahmoud, M., Bader, M., & McNicholas, J. (2023). Short-term and long-term readmission prediction in uncontrolled diabetic patients using machine learning techniques. In Proceedings of the 16th International Joint Conference on Biomedical Engineering Systems and Technologies (Vol. 5: CCH, pp. 680–688). SciTePress. https://doi.org/10.5220/0011926000003414
 
-Strack, Beata, DeShazo, Jonathan P., Gennings, Chris, Olmo, Juan L., Ventura, Sebastian, Cios, Krzysztof J., Clore, John N., Impact of HbA1c Measurement on Hospital Readmission Rates: Analysis of 70,000 Clinical Database Patient Records, BioMed Research International, 2014, 781670, 11 pages, 2014. https://doi.org/10.1155/2014/781670 
+Margosian, S., Crossley, H., Riggs, M., Henkemeyer, T., Fisher, M., Patel, A., Ellimoottil, C., Jenq, G., & Toma, G. (2024). Impact of a large-scale remote patient monitoring program on hospitalization reduction. Telemedicine and e-Health. Advance online publication. https://doi.org/10.1089/tmj.2024.0600
+
+Mounié, M., Costa, N., Gourdy, P., Latorre, C., Schirr-Bonnans, S., Lagarrigue, J. M., Roussel, H., Martini, J., Buisson, J. C., Chauchard, M. C., Delaunay, J., Taoui, S., Poncet, M. F., Cosma, V., Lablanche, S., Coustols-Valat, M., Chaillous, L., Thivolet, C., Sanz, C., Penfornis, A., … Educ@dom Study Group (2022). Cost-Effectiveness Evaluation of a Remote Monitoring Programme Including Lifestyle Education Software in Type 2 Diabetes: Results of the Educ@dom Study. Diabetes therapy : research, treatment and education of diabetes and related disorders, 13(4), 693–708. https://doi.org/10.1007/s13300-022-01207-1
+
+Po, H., Chu, Y., Tsai, H., Lin, C., Chen, C., & Ma, M. (2024). Efficacy of remote health monitoring in reducing hospital readmissions among high-risk postdischarge patients: Prospective cohort study. JMIR Formative Research, 8, e53455. https://doi.org/10.2196/53455
+
+Roy, S. (2025, March 7). 60+ remote patient monitoring statistics: A massive shift in healthcare? Dialog Health. Retrieved October 29, 2025, from https://www.dialoghealth.com/post/remote-patient-monitoring-statistics
+
+Rubin, D. J. (2015). Hospital readmission of patients with diabetes. Current Diabetes Reports, 15(4), 17. https://doi.org/10.1007/s11892-015-0584-7
+
+Strack, B., DeShazo, J. P., Gennings, C., Olmo, J. L., Ventura, S., Cios, K. J., & Clore, J. N. (2014). Impact of HbA1c measurement on hospital readmission rates: Analysis of 70,000 clinical database patient records. BioMed Research International, 2014, 781670. https://doi.org/10.1155/2014/781670
+
+U.S. Department of Health & Human Services. (2025, January 17). Billing for remote patient monitoring. Retrieved October 29, 2025, from https://telehealth.hhs.gov/providers/best-practice-guides/telehealth-and-remote-patient-monitoring/billing-remote-patient
+
+U.S. Department of Health and Human Services. (2022, September 21). Two popular diabetes drugs outperformed others in large clinical trial [News release]. National Institutes of Health. https://www.nih.gov/news-events/news-releases/two-popular-diabetes-drugs-outperformed-others-large-clinical-trial
 
 Weiss, A. J., & Jiang, H. J. (2021, July). Overview of clinical conditions with frequent and costly hospital readmissions by payer, 2018 (HCUP Statistical Brief No. 278). Agency for Healthcare Research & Quality. https://hcup-us.ahrq.gov/reports/statbriefs/sb278-Conditions-Frequent-Readmissions-By-Payer-2018.jsp
