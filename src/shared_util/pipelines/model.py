@@ -304,6 +304,7 @@ class ModelPipeline:
 
         threshold_notes = 'baseline'
         chosen_thresh = None
+        est_pp_savings = 0.0
 
         if use_cost_threshold:
             # Build cost curves on validate
@@ -317,6 +318,13 @@ class ModelPipeline:
             chosen_thresh = choice["threshold"]
             threshold_notes = f'cost_opt_R={int(R)}_e={e:.2f}_c={("avg" if choice["chosen_c_m"] is None else int(choice["chosen_c_m"]))}'
 
+            if choice["chosen_c_m"] is None:
+                # maximizing average across c_m_list
+                est_pp_savings = float(np.mean(list(choice["savings_at_c"].values())))
+            else:
+                # using a specific c_m
+                est_pp_savings = float(choice["savings_at_c"][choice["chosen_c_m"]])
+            
             # Optional overlays
             if show_plot:
                 title = f"PR with break-even PPV lines (R=${int(R)}, e={e:.2f})"
@@ -325,12 +333,13 @@ class ModelPipeline:
                 title2 = f"Savings vs Threshold on validate (per 1000 patients)"
                 plot_savings_vs_threshold(curves, c_m_list=c_m_list, per_1000=True, title=title2)
 
+
             print(
                 f"[COST] Chosen threshold: {chosen_thresh:.4f} | "
                 f"PPV={choice['precision']:.3f}  Recall={choice['recall']:.3f}  "
                 f"FlagRate={choice['flag_rate']:.3f}  "
                 f"Savings@{('avg' if choice['chosen_c_m'] is None else '$'+str(int(choice['chosen_c_m'])))}="
-                f"{(np.mean(list(choice['savings_at_c'].values())) if choice['chosen_c_m'] is None else choice['savings_at_c'][choice['chosen_c_m']]):.2f} per patient"
+                f"{est_pp_savings:.2f} per patient"
             )
 
         elif use_f2_threshold:
@@ -366,6 +375,7 @@ class ModelPipeline:
             model=self.model,
             hyperparam_notes='tuned_best_roc_auc',
             pipeline_notes='under_sample',
+            est_pp_savings=est_pp_savings,
             log=self.LOG
         )
 

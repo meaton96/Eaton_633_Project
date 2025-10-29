@@ -22,7 +22,8 @@ INSERT INTO metrics (
     TN,
     TP,
     FP,
-    FN
+    FN,
+    est_pp_savings
 ) VALUES (
     :run_id,
     :model,
@@ -39,7 +40,8 @@ INSERT INTO metrics (
     :TN,
     :TP,
     :FP,
-    :FN
+    :FN,
+    :est_pp_savings
 )
 ON CONFLICT (run_id, model, data, threshold_notes, pipeline_notes)
 DO UPDATE SET
@@ -54,6 +56,7 @@ DO UPDATE SET
     TP = EXCLUDED.TP,
     FP = EXCLUDED.FP,
     FN = EXCLUDED.FN,
+    est_pp_savings = EXCLUDED.est_pp_savings,
     created_at = CURRENT_TIMESTAMP;
 """
 
@@ -131,6 +134,7 @@ def log_metric(
     TP: int | None = None,
     FN: int | None = None,
     FP: int | None = None,
+    est_pp_savings: float = 0.0,
     write: bool = True,
 ) -> pd.DataFrame:
 
@@ -151,6 +155,7 @@ def log_metric(
         "TP": _to_int(TP),
         "FP": _to_int(FP),
         "FN": _to_int(FN),
+        "est_pp_savings": _to_float(est_pp_savings)
     }
 
     if not write:

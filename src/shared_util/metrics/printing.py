@@ -40,6 +40,7 @@ def print_metrics(y_true,
                   model=None,
                   pipeline_notes=None,
                   hyperparam_notes=None,
+                  est_pp_savings=0.0,
                   ):
     cnf = confusion_matrix(y_true, y_pred).ravel()
     
@@ -78,5 +79,6 @@ def print_metrics(y_true,
             TP=tp,
             FN=fn,
             FP=fp,
-            roc_auc=_roc_auc
+            roc_auc=_roc_auc,
+            est_pp_savings=est_pp_savings
             )
