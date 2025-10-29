@@ -50,6 +50,7 @@ def fetch_metric(run_id: int) -> pd.DataFrame:
             tp,
             fp,
             fn,
+            est_pp_savings,
             created_at
         FROM metrics
         WHERE run_id = :run_id
@@ -80,6 +81,7 @@ def fetch_all_metrics() -> pd.DataFrame:
             tp,
             fp,
             fn,
+            est_pp_savings,
             created_at
         FROM metrics
         ORDER BY created_at DESC
