@@ -48,7 +48,7 @@ def check_y_dist(y_train, y_validate, y_test):
     plt.show()
     
 
-def plot_metrics(df, plot_id, metrics = ["roc_auc", "accuracy", "precision", "recall", "f1"]):
+def plot_metrics(df, plot_id, title_suff = "", metrics = ["roc_auc", "accuracy", "precision", "recall", "f1"]):
     import seaborn as sns
     import matplotlib.pyplot as plt
     from shared_util.metrics.util import filter_duplicates_by_id
@@ -70,12 +70,12 @@ def plot_metrics(df, plot_id, metrics = ["roc_auc", "accuracy", "precision", "re
     # --- Plot 1: Validation (pre-threshold) ---
     validate_df = melted[melted["data"] == "validate"]
     _plot_metrics(validate_df,
-                "Model Comparison on Validation Set (Pre-Threshold Testing)", palette)
+                f"Model Comparison on Validation Set (Pre-Threshold Testing) [{title_suff}]", palette)
 
     # --- Plot 2: Test
     test_df = melted[melted["data"] == "test"]
     _plot_metrics(test_df,
-                "Model Comparison on Held-Out Test Set (Cost Weighted Threshold)", palette)
+                f"Model Comparison on Held-Out Test Set (Cost Weighted Threshold) [{title_suff}]", palette)
     
 # helper to make consistent chart layout
 def _plot_metrics(subset, title, palette):

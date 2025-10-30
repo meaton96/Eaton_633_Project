@@ -181,7 +181,7 @@ cython_debug/
 .cursorindexingignore
 
 
-
+data/*/*.png
 data/*.csv
 data/*.joblib
 data/temp/*

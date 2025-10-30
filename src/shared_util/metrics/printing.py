@@ -5,22 +5,8 @@ from sklearn.metrics import (
 )
 import numpy as np
 
-def summary_by_auc(df, plot_id):
-    from IPython.display import display
-    from shared_util.metrics.util import filter_duplicates_by_id
 
-    df_collapse = filter_duplicates_by_id(df, plot_id)
-
-    df_collapse = df_collapse.sort_values(by='roc_auc', ascending=False)
-
-    df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
-
-    df_collapse['roc_auc'] = np.round(df_collapse['roc_auc'], 3)
-
-    print('Models by ROC_AUC')
-    display(df_collapse.head(5)[['model', 'roc_auc']])
-
-def _summary_by(df, col):
+def summary_by(df, col):
     from IPython.display import display
     df_collapse = df.sort_values(by=col, ascending=False)
     df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
@@ -29,12 +15,7 @@ def _summary_by(df, col):
     print(f'Models by {col}')
     display(df_collapse.head(5)[['model', col]])
 
-def summary_by_recall(df):
-    _summary_by(df, 'recall')
 
-def summary_by_savings(df):
-    _summary_by(df, 'est_pp_savings')
-    
 
 def print_metrics(y_true, 
                   y_pred,

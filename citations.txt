@@ -1,5 +1,9 @@
 Benbassat, J., & Taragin, M. (2000). Hospital readmissions as a measure of quality of health care: Advantages and limitations. Archives of Internal Medicine, 160(8), 1074-1081. https://doi.org/10.1001/archinte.160.8.1074
 
+Centers for Disease Control and Prevention. (2024, May 15). National diabetes statistics report – Data & research. https://www.cdc.gov/diabetes/php/data-research/index.html?utm_source=chatgpt.com
+
+Centers for Medicare & Medicaid Services. (2024, September 10). Electronic health records. https://www.cms.gov/priorities/key-initiatives/e-health/records?utm_source=chatgpt.com
+
 Centers for Medicare & Medicaid Services. (n.d.). Physician fee schedule. Retrieved October 29, 2025, from https://www.cms.gov/medicare/payment/fee-schedules/physician
 
 Clore, J., Cios, K., DeShazo, J., & Strack, B. (2014). Diabetes 130-US Hospitals for Years 1999-2008 [Dataset]. UCI Machine Learning Repository. https://doi.org/10.24432/C5230J.
