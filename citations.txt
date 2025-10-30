@@ -8,6 +8,8 @@ Current Health. (2019, May 11). 3 strategies to address the $40 B hospital readm
 
 Dawson, N. L., Hull, B. P., Vijapura, P., Dumitrascu, A. G., Ball, C. T., Thiemann, K. M., Maniaci, M. J., & Burton, M. C. (2021). Home Telemonitoring to Reduce Readmission of High-Risk Patients: a Modified Intention-to-Treat Randomized Clinical Trial. Journal of general internal medicine, 36(11), 3395–3401. https://doi.org/10.1007/s11606-020-06589-1
 
+De Guzman, K. R., Snoswell, C. L., Taylor, M. L., Gray, L. C., & Caffery, L. J. (2022). Economic evaluations of remote patient monitoring for chronic disease: A systematic review. Value in Health, 25(6), 897–913. https://doi.org/10.1016/j.jval.2021.12.001
+
 Emi-Johnson, O. G., & Nkrumah, K. J. (2025). Predicting 30-Day Hospital Readmission in Patients With Diabetes Using Machine Learning on Electronic Health Record Data. Cureus, 17(4), e82437. https://doi.org/10.7759/cureus.82437
 
 Godla, D. (2025, March 17). How remote patient monitoring companies support high-risk patients. ThoroughCare. Retrieved October 29, 2025, from https://www.thoroughcare.net/blog/remote-patient-monitoring-companies
@@ -21,6 +23,8 @@ Jiang, H. J., & Hensche, M. K. (2023, September). Characteristics of 30-day all-
 Kokkonen, J., Mustonen, P., Heikkilä, E., Leskelä, R., Pennanen, P., Krühn, K., Jalkanen, A., Laakso, J., Kempers, J., Väisänen, S., & Torkki, P. (2024). Effectiveness of telemonitoring in reducing hospitalization and associated costs for patients with heart failure in Finland: Nonrandomized pre-post telemonitoring study. JMIR mHealth and uHealth, 12, e51841. https://doi.org/10.2196/51841
 
 Le Goff-Pronost, M., & Bongiovanni-Delarozière, I. (2023). Economic evaluation of remote patient monitoring and organizational analysis according to patient involvement: a scoping review. International journal of technology assessment in health care, 39(1), e59. https://doi.org/10.1017/S0266462323002581
+
+Leo, D. G., Buckley, B. J. R., Chowdhury, M., Harrison, S. L., Isanejad, M., Lip, G. Y. H., Wright, D. J., Lane, D. A., & TAILOR investigators. (2022). Interactive remote patient monitoring devices for managing chronic health conditions: Systematic review and meta-analysis. Journal of Medical Internet Research, 24(11), Article e35508. https://doi.org/10.2196/35508
 
 Liu, V., Sue, L., & Wu, Y. (2024). Comparison of machine learning models for predicting 30-day readmission rates for patients with diabetes. Journal Of Medical Artificial Intelligence, 7. doi:10.21037/jmai-24-70
 
@@ -38,8 +42,14 @@ Rubin, D. J. (2015). Hospital readmission of patients with diabetes. Current Dia
 
 Strack, B., DeShazo, J. P., Gennings, C., Olmo, J. L., Ventura, S., Cios, K. J., & Clore, J. N. (2014). Impact of HbA1c measurement on hospital readmission rates: Analysis of 70,000 clinical database patient records. BioMed Research International, 2014, 781670. https://doi.org/10.1155/2014/781670
 
+Taylor, M. L., Thomas, E. E., Snoswell, C. L., Smith, A. C., & Caffery, L. J. (2021). Does remote patient monitoring reduce acute care use? A systematic review. BMJ Open, 11(3), e040232. https://doi.org/10.1136/bmjopen-2020-040232
+
+Thomas, E. E., Taylor, M. L., Banbury, A., Snoswell, C. L., Haydon, H. M., Gallegos Rejas, V. M., Smith, A. C., & Caffery, L. J. (2021). Factors influencing the effectiveness of remote patient monitoring interventions: a realist review. BMJ open, 11(8), e051844. https://doi.org/10.1136/bmjopen-2021-051844
+
 U.S. Department of Health & Human Services. (2025, January 17). Billing for remote patient monitoring. Retrieved October 29, 2025, from https://telehealth.hhs.gov/providers/best-practice-guides/telehealth-and-remote-patient-monitoring/billing-remote-patient
 
 U.S. Department of Health and Human Services. (2022, September 21). Two popular diabetes drugs outperformed others in large clinical trial [News release]. National Institutes of Health. https://www.nih.gov/news-events/news-releases/two-popular-diabetes-drugs-outperformed-others-large-clinical-trial
 
 Weiss, A. J., & Jiang, H. J. (2021, July). Overview of clinical conditions with frequent and costly hospital readmissions by payer, 2018 (HCUP Statistical Brief No. 278). Agency for Healthcare Research & Quality. https://hcup-us.ahrq.gov/reports/statbriefs/sb278-Conditions-Frequent-Readmissions-By-Payer-2018.jsp
+
+Zhang, D. S., Millet, L., Bellows, B. K., Lee, S., & Mann, D. (2025). Program Cost and Return on Investment of a Remote Patient Monitoring Program for Hypertension Management. medRxiv : the preprint server for health sciences, 2025.01.29.25321334. https://doi.org/10.1101/2025.01.29.25321334

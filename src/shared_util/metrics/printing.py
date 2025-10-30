@@ -20,14 +20,21 @@ def summary_by_auc(df, plot_id):
     print('Models by ROC_AUC')
     display(df_collapse.head(5)[['model', 'roc_auc']])
 
-def summary_by_recall(df):
+def _summary_by(df, col):
     from IPython.display import display
-    df_collapse = df.sort_values(by='recall', ascending=False)
+    df_collapse = df.sort_values(by=col, ascending=False)
     df_collapse = df_collapse = df_collapse[df_collapse['data'] == 'test']
-    df_collapse['recall'] = np.round(df_collapse['recall'], 3)
+    df_collapse[col] = np.round(df_collapse[col], 3)
 
-    print('Models by Recall')
-    display(df_collapse.head(5)[['model', 'recall']])
+    print(f'Models by {col}')
+    display(df_collapse.head(5)[['model', col]])
+
+def summary_by_recall(df):
+    _summary_by(df, 'recall')
+
+def summary_by_savings(df):
+    _summary_by(df, 'est_pp_savings')
+    
 
 def print_metrics(y_true, 
                   y_pred,

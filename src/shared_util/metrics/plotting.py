@@ -67,44 +67,29 @@ def plot_metrics(df, plot_id, metrics = ["roc_auc", "accuracy", "precision", "re
         value_name="score"
     )
 
-    # helper to make consistent chart layout
-    def plot_metrics(subset, title, emphasize=None):
-        plt.figure(figsize=(12,6))
-        sns.barplot(
-            data=subset,
-            x="metric", y="score",
-            hue="model",
-            palette=palette,
-            errorbar=None
-        )
-        plt.ylim(0, 1)
-        plt.title(title, fontsize=14, weight="bold")
-        plt.grid(axis="y", linestyle="--", alpha=0.4)
-        if emphasize:
-            plt.axhline(0, color="none") 
-            # slightly bold recall bars
-            bars = plt.gca().patches
-            for b in bars:
-                if b.get_x() < 0:  #type: ignore
-                    continue
-            # recolor recall tick label
-            xticks = plt.gca().get_xticklabels()
-            for t in xticks:
-                if t.get_text().lower() == emphasize.lower():
-                    t.set_weight("bold") #type: ignore
-                    t.set_color("#b22222")
-        plt.legend(title="Model", frameon=False)
-        plt.tight_layout()
-        plt.show()
-
-
     # --- Plot 1: Validation (pre-threshold) ---
     validate_df = melted[melted["data"] == "validate"]
-    plot_metrics(validate_df,
-                "Model Comparison on Validation Set (Pre-Threshold Testing)")
+    _plot_metrics(validate_df,
+                "Model Comparison on Validation Set (Pre-Threshold Testing)", palette)
 
     # --- Plot 2: Test
     test_df = melted[melted["data"] == "test"]
-    plot_metrics(test_df,
-                "Model Comparison on Held-Out Test Set (Cost Weighted Threshold)",
-                emphasize="precision")
+    _plot_metrics(test_df,
+                "Model Comparison on Held-Out Test Set (Cost Weighted Threshold)", palette)
+    
+# helper to make consistent chart layout
+def _plot_metrics(subset, title, palette):
+    plt.figure(figsize=(12,6))
+    sns.barplot(
+        data=subset,
+        x="metric", y="score",
+        hue="model",
+        palette=palette,
+        errorbar=None
+    )
+    plt.ylim(0, 1)
+    plt.title(title, fontsize=14, weight="bold")
+    plt.grid(axis="y", linestyle="--", alpha=0.4)
+    plt.legend(title="Model", frameon=False)
+    plt.tight_layout()
+    plt.show()
