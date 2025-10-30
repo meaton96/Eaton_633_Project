@@ -231,6 +231,3 @@ def compare_runs(
 
     plt.show()
     return ranked
-
-if __name__ == "__main__":
-    pass
