@@ -28,7 +28,8 @@ dependencies = [
     "requests",
     "python-dateutil",
     "PyYAML",
-    "ucimlrepo"
+    "ucimlrepo",
+    "psycopg2"
 ]
 
 [tool.setuptools]
