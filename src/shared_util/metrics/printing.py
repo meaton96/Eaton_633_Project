@@ -4,6 +4,8 @@ from sklearn.metrics import (
     classification_report, roc_auc_score
 )
 import numpy as np
+import pandas as pd
+from typing import Iterable
 
 # make a summary data frame of the sepcified metric type
 def summary_by(df, col):
@@ -70,3 +72,20 @@ def print_metrics(y_true,
             roc_auc=_roc_auc,
             est_pp_savings=est_pp_savings
             )
+        
+# Leaderboards
+def print_leaderboards(df_ranked: pd.DataFrame, metric_cols: Iterable[str] = ["roc_auc", "f1", "precision", "recall", "accuracy"], top_n: int = 10):
+    metric_cols = list(metric_cols)
+
+    from IPython.display import display
+
+    print("\n=== Overall ranking (by rank_sum -> overall_score) ===")
+    cols = ["run_id","label","overall_score","rank_sum"] + metric_cols
+    display(df_ranked[cols].head(top_n))
+
+    for m in metric_cols:
+        print(f"\n=== Top {top_n} by {m} ===")
+        display(
+            df_ranked.sort_values(m, ascending=False)[["run_id","label",m]]
+            .head(top_n)
+        )

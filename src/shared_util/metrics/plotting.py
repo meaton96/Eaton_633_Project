@@ -1,5 +1,9 @@
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas as pd
+from typing import Iterable, Any
+
+DEFAULT_METRIC_COLS = ["roc_auc", "f1", "precision", "recall", "accuracy"]
 
 def plot_pr_with_break_even(curves, R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0), title=None):
     # PR: x=recall, y=precision
@@ -48,7 +52,7 @@ def check_y_dist(y_train, y_validate, y_test):
     plt.show()
     
 
-def plot_metrics(df, plot_id, title_suff = "", metrics = ["roc_auc", "accuracy", "precision", "recall", "f1"]):
+def plot_metrics(df, plot_id, title_suff = "", metrics = DEFAULT_METRIC_COLS, palette: str | Any = "Set1"):
     import seaborn as sns
     import matplotlib.pyplot as plt
     from shared_util.metrics.util import filter_duplicates_by_id
@@ -57,7 +61,7 @@ def plot_metrics(df, plot_id, title_suff = "", metrics = ["roc_auc", "accuracy",
     # ensure model column sorted nicely for consistent colors
     df_filtered["model"] = df_filtered["model"].astype("category")
     model_order = sorted(df_filtered["model"].unique())
-    palette = sns.color_palette("Set1", len(model_order))
+    palette = sns.color_palette(palette, len(model_order))
 
     # melt for plotting
     melted = df_filtered.melt(
@@ -93,3 +97,56 @@ def _plot_metrics(subset, title, palette):
     plt.legend(title="Model", frameon=False)
     plt.tight_layout()
     plt.show()
+
+# Plotting helpers for comparing runs
+def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_METRIC_COLS, title: str = "Metrics per Run", cmap='YlGnBu'):
+    data = df[["label"] + list(metric_cols)].set_index("label")
+    plt.figure(figsize=(max(8, len(metric_cols)*1.2), max(6, len(data)*0.4 + 2)))#type: ignore
+    sns.heatmap(data, annot=True, fmt=".3f", cmap=cmap, cbar=True)
+    plt.title(title)
+    plt.xlabel("Metric")
+    plt.ylabel("Run (label)")
+    plt.tight_layout()
+
+
+def plot_bar_for_metric(
+    df: pd.DataFrame,
+    metric: str,
+    title_prefix: str = "",
+    figsize=(10, 6),
+    palette: str | Any ="tab20"
+):
+    import matplotlib.pyplot as plt
+    import seaborn as sns
+
+    plt.figure(figsize=figsize)
+
+    # Sort bars by the current metric but keep colors tied to label
+    order = (
+        df.sort_values(metric, ascending=False)["label"]
+        .astype(str)
+        .drop_duplicates()
+        .tolist()
+    )
+
+    # If a dict is passed, assume it's a label->color map; otherwise seaborn will generate one
+    use_hue = "label" if isinstance(palette, dict) else None
+    kwargs = {"hue": use_hue, "palette": palette, "dodge": False} if use_hue else {"palette": palette}
+
+    ax = sns.barplot(
+        data=df,
+        x="label",
+        y=metric,
+        order=order,
+        **kwargs #type: ignore
+    )
+
+    # Keep colors consistent but avoid duplicate legend spam
+    if hasattr(ax, "legend_") and ax.legend_ is not None:
+        ax.legend_.remove()
+
+    plt.xticks(rotation=45, ha="right")
+    plt.title(f"{title_prefix}{metric}")
+    plt.xlabel("Run")
+    plt.ylabel(metric)
+    plt.tight_layout()
