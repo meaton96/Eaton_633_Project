@@ -1,4 +1,6 @@
 import pandas as pd
+
+# filter duplicates out of the data frame by primary key (model, data, threshold_notes, pipeline_notes)
 def filter_duplicates_by_id(df, keep_id):
     
     key_cols = ['model', 'data', 'threshold_notes', 'pipeline_notes']

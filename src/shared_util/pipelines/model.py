@@ -281,7 +281,7 @@ class ModelPipeline:
         import time
         import numpy as np
         from shared_util.metrics.scoring import (
-            get_scores, best_threshold_by_fbeta,
+            get_scores,
             cost_curves_from_scores, best_threshold_by_cost
         )
         from shared_util.metrics.plotting import plot_pr_with_break_even, plot_savings_vs_threshold
@@ -308,54 +308,42 @@ class ModelPipeline:
         chosen_thresh = None
         est_pp_savings = 0.0
 
-        if use_cost_threshold:
-            # Build cost curves on validate
-            curves = cost_curves_from_scores(
-                y_true=self.y_validate,
-                y_scores=_val_scores,
-                R=R, e=e, c_m_list=c_m_list
-            )
-            choice = best_threshold_by_cost(curves, prefer_c_m=prefer_c_m)
+        # Build cost curves on validate
+        curves = cost_curves_from_scores(
+            y_true=self.y_validate,
+            y_scores=_val_scores,
+            R=R, e=e, c_m_list=c_m_list
+        )
+        choice = best_threshold_by_cost(curves, prefer_c_m=prefer_c_m)
 
-            chosen_thresh = choice["threshold"]
-            threshold_notes = f'cost_opt_R={int(R)}_e={e:.2f}_c={("avg" if choice["chosen_c_m"] is None else int(choice["chosen_c_m"]))}'
+        chosen_thresh = choice["threshold"]
+        threshold_notes = f'cost_opt_R={int(R)}_e={e:.2f}_c={("avg" if choice["chosen_c_m"] is None else int(choice["chosen_c_m"]))}'
 
-            if choice["chosen_c_m"] is None:
-                # maximizing average across c_m_list
-                est_pp_savings = float(np.mean(list(choice["savings_at_c"].values())))
-            else:
-                # using a specific c_m
-                est_pp_savings = float(choice["savings_at_c"][choice["chosen_c_m"]])
-            
-            # Optional overlays
-            if show_plot:
-                title = f"PR with break-even PPV lines (R=${int(R)}, e={e:.2f})"
-                plot_pr_with_break_even(curves, R=R, e=e, c_m_list=c_m_list, title=title)
+        if choice["chosen_c_m"] is None:
+            # maximizing average across c_m_list
+            est_pp_savings = float(np.mean(list(choice["savings_at_c"].values())))
+        else:
+            # using a specific c_m
+            est_pp_savings = float(choice["savings_at_c"][choice["chosen_c_m"]])
+        
+        # Optional overlays
+        if show_plot:
+            title = f"PR with break-even PPV lines (R=${int(R)}, e={e:.2f})"
+            plot_pr_with_break_even(curves, R=R, e=e, c_m_list=c_m_list, title=title)
 
-                title2 = f"Savings vs Threshold on validate (per 1000 patients)"
-                plot_savings_vs_threshold(curves, c_m_list=c_m_list, per_1000=True, title=title2)
+            title2 = f"Savings vs Threshold on validate (per 1000 patients)"
+            plot_savings_vs_threshold(curves, c_m_list=c_m_list, per_1000=True, title=title2)
 
 
-            print(
-                f"[COST] Chosen threshold: {chosen_thresh:.4f} | "
-                f"PPV={choice['precision']:.3f}  Recall={choice['recall']:.3f}  "
-                f"FlagRate={choice['flag_rate']:.3f}  "
-                f"Savings@{('avg' if choice['chosen_c_m'] is None else '$'+str(int(choice['chosen_c_m'])))}="
-                f"{est_pp_savings:.2f} per patient"
-            )
+        print(
+            f"[COST] Chosen threshold: {chosen_thresh:.4f} | "
+            f"PPV={choice['precision']:.3f}  Recall={choice['recall']:.3f}  "
+            f"FlagRate={choice['flag_rate']:.3f}  "
+            f"Savings@{('avg' if choice['chosen_c_m'] is None else '$'+str(int(choice['chosen_c_m'])))}="
+            f"{est_pp_savings:.2f} per patient"
+        )
 
-        elif use_f2_threshold:
-            # legacy F2 optimization path
-            info = best_threshold_by_fbeta(self.y_validate, _val_scores, beta=2.0)
-            chosen_thresh = info['threshold']
-            threshold_notes = 'f2_weighted'
-            if show_plot and 'curve' in info:
-                from shared_util.metrics.scoring import plot_scoring
-                plot_scoring(info['curve'])
-            print(
-                f"[F2] Best threshold: {chosen_thresh:.4f} | "
-                f"Precision={info['precision']:.3f}  Recall={info['recall']:.3f}  F2={info['fbeta']:.3f}"
-            )
+        
 
         # 2) Apply chosen threshold to test (or native predict if neither path)
         _test_scores = get_scores(_model, self.X_test)
@@ -677,7 +665,7 @@ class ModelPipeline:
                 from imblearn.over_sampling import SMOTE
                 _sampler = SMOTE(random_state=random_state)
 
-            steps.append(("sampler", _sampler))
+            steps.append(("sampler", _sampler)) #type: ignore
         
 
         if self.scaler is not None:

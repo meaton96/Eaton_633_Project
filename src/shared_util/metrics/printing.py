@@ -5,7 +5,7 @@ from sklearn.metrics import (
 )
 import numpy as np
 
-
+# make a summary data frame of the sepcified metric type
 def summary_by(df, col):
     from IPython.display import display
     df_collapse = df.sort_values(by=col, ascending=False)
@@ -16,7 +16,7 @@ def summary_by(df, col):
     display(df_collapse.head(10)[['model', col]])
 
 
-
+# print a nice summary of all model metrics
 def print_metrics(y_true, 
                   y_pred,
                   y_proba,

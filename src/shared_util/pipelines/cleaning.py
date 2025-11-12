@@ -5,7 +5,14 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.utils.validation import check_array
 from typing import List
 
+
+
+
 class CleaningPipeline(BaseEstimator, TransformerMixin):
+    """
+    Represents an sklearn compatible pipeline to prepocess the dataset.
+    Handles Categorical binning, one hot encoding, log transformations, and interaction term creation
+    """
 
     X: pd.DataFrame
 
@@ -19,7 +26,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self.log_transform_cols = log_transform_cols
         self.one_hot_ordinal = one_hot_ordinal
 
-
+    # wrapper for all steps
     def run_pipe(self):
         self.bin_categories()
         self.drop_previous_category_cols()
@@ -52,14 +59,14 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X.drop(columns=ordinal_cols, inplace=True)
             
 
-
+    # fit to supplied data, saves data as class field for manipulation
     def fit(self, X, y=None):
         X = self._ensure_dataframe(X)
         self.feature_names_in_ = np.array(X.columns, dtype=object)
         self.n_features_in_ = X.shape[1]
         self.X = X.copy()
 
-        self.run_pipe()
+        self.run_pipe() # transform
 
    
         self._ref_dummies_ = self._choose_ref_dummies(self.X)
@@ -135,6 +142,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X = self.X.drop(columns=to_drop, errors="ignore")
 
 
+    # sklearn api
     def get_feature_names_out(self, input_features=None):
         from sklearn.utils.validation import check_is_fitted
         check_is_fitted(self, "feature_names_out_")
@@ -155,6 +163,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             cols = [f"x{i}" for i in range(X_arr.shape[1])]
         return pd.DataFrame(X_arr, columns=cols)
 
+    # creates interaction terms
     def add_dummy_interactions(self):
         def add_dummy_interactions(df, left_cols, right_cols, prefix='i_'):
             out = df.copy()

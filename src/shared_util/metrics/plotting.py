@@ -57,7 +57,7 @@ def plot_metrics(df, plot_id, title_suff = "", metrics = ["roc_auc", "accuracy",
     # ensure model column sorted nicely for consistent colors
     df_filtered["model"] = df_filtered["model"].astype("category")
     model_order = sorted(df_filtered["model"].unique())
-    palette = sns.color_palette("Set2", len(model_order))
+    palette = sns.color_palette("Set1", len(model_order))
 
     # melt for plotting
     melted = df_filtered.melt(

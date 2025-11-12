@@ -31,7 +31,7 @@ def cost_curves_from_scores(
         "thresholds": thresholds,
         "prevalence": p,
         "flag_rate": flag_rate,
-        "savings": savings,   # dict: c_m -> array same length as thresholds
+        "savings": savings,   
     }
 
 def best_threshold_by_cost(curves, prefer_c_m=None):
@@ -41,10 +41,10 @@ def best_threshold_by_cost(curves, prefer_c_m=None):
     Otherwise, pick the argmax over the average savings across c_m_list.
     """
     c_ms = sorted(curves["savings"].keys())
-    mat = np.column_stack([curves["savings"][c] for c in c_ms])  # T x C
+    mat = np.column_stack([curves["savings"][c] for c in c_ms]) 
 
     if prefer_c_m is None:
-        # hedge: maximize mean savings across the cost scenarios
+        # maximize mean savings across the cost scenarios
         agg = np.nanmean(mat, axis=1)
         j = int(np.nanargmax(agg))
         chosen_c_m = None
@@ -68,14 +68,13 @@ def best_threshold_by_cost(curves, prefer_c_m=None):
 def cost_savings_by_threshold(y_true, y_scores, R=16300, c_m=1000, e=0.50):
     # PR curve returns precision and recall for descending thresholds
     precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
-    # Align lengths: thresholds has len-1 vs precision/recall
+    # Align lengths
     precision, recall = precision[:-1], recall[:-1]
     thresholds = thresholds
 
     y_true = np.asarray(y_true)
     p = y_true.mean()
 
-    # We need FPR or flag_rate. We can recover flag_rate from precision & recall:
     # flag_rate = (p * recall) / precision
     # Guard division by zero
     with np.errstate(divide='ignore', invalid='ignore'):
@@ -95,35 +94,34 @@ def cost_savings_by_threshold(y_true, y_scores, R=16300, c_m=1000, e=0.50):
     }
 
 
-def make_f2_scorer():
-    return make_scorer(fbeta_score, beta=2, average='binary')
+# def make_f2_scorer():
+#     return make_scorer(fbeta_score, beta=2, average='binary')
 
 
 
-def best_threshold_by_fbeta(y_true, scores, beta=2.0):
-    precisions, recalls, thresholds = precision_recall_curve(y_true, scores)
-    precisions_t = precisions[:-1]
-    recalls_t = recalls[:-1]
-    fbeta = (1 + beta**2) * (precisions_t * recalls_t) / (beta**2 * precisions_t + recalls_t + 1e-12)
-    best_idx = int(np.argmax(fbeta))
-    return {
-        "threshold": thresholds[best_idx],
-        "precision": float(precisions_t[best_idx]),
-        "recall": float(recalls_t[best_idx]),
-        "fbeta": float(fbeta[best_idx]),
-        "curve": (thresholds, precisions_t, recalls_t, fbeta, best_idx),
-    }
+# def best_threshold_by_fbeta(y_true, scores, beta=2.0):
+#     precisions, recalls, thresholds = precision_recall_curve(y_true, scores)
+#     precisions_t = precisions[:-1]
+#     recalls_t = recalls[:-1]
+#     fbeta = (1 + beta**2) * (precisions_t * recalls_t) / (beta**2 * precisions_t + recalls_t + 1e-12)
+#     best_idx = int(np.argmax(fbeta))
+#     return {
+#         "threshold": thresholds[best_idx],
+#         "precision": float(precisions_t[best_idx]),
+#         "recall": float(recalls_t[best_idx]),
+#         "fbeta": float(fbeta[best_idx]),
+#         "curve": (thresholds, precisions_t, recalls_t, fbeta, best_idx),
+#     }
 
 def get_scores(estimator, X):
     # Try probabilities first
     if hasattr(estimator, "predict_proba"):
         proba = estimator.predict_proba(X)
-        # assume positive class is column 1
+        # positive class is column 1
         return proba[:, 1]
     # Fall back to decision_function
     if hasattr(estimator, "decision_function"):
         return estimator.decision_function(X)
-    # Last resort: use predicted labels (not great for sweeping)
     return estimator.predict(X).astype(float)
 
 def plot_scoring(curve_info: Tuple):
