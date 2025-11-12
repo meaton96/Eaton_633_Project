@@ -5,7 +5,7 @@ import time
 # High-level helpers for configuring preprocessing and running model baselines.
 
 
-MODELS = ['rf', 'svc', 'sgd', 'xgb', 'nb', 'knn']
+MODELS = ['rf', 'svc', 'sgd', 'xgb', 'nb', 'knn', 'lr', 'mlp']
 
 class ModelPipeline:
     """
@@ -619,26 +619,31 @@ class ModelPipeline:
         print(f'Duration: {_fmt_time(time.perf_counter() - t0)}')
     
     def _model_factory(self, model:str,random_state=42, **kwargs):
-        from sklearn.ensemble import RandomForestClassifier
-        from sklearn.linear_model import SGDClassifier
-        from sklearn.svm import SVC
-        from xgboost import XGBClassifier
-        from sklearn.naive_bayes import GaussianNB
-        from sklearn.neighbors import KNeighborsClassifier
         
-
         match model:
+            case 'mlp':
+                from sklearn.neural_network import MLPClassifier
+                return MLPClassifier(random_state=random_state, **kwargs)
+            case 'lr':
+                from sklearn.linear_model import LogisticRegression
+                return LogisticRegression(random_state=random_state, **kwargs)
             case 'nb':
+                from sklearn.naive_bayes import GaussianNB
                 return GaussianNB(**kwargs)
             case 'knn':
+                from sklearn.neighbors import KNeighborsClassifier
                 return KNeighborsClassifier(**kwargs)
             case 'rf':
+                from sklearn.ensemble import RandomForestClassifier
                 return RandomForestClassifier(random_state=random_state, **kwargs)
             case 'sgd':
+                from sklearn.linear_model import SGDClassifier
                 return SGDClassifier(random_state=random_state, **kwargs)
             case 'svc':
+                from sklearn.svm import SVC
                 return SVC(kernel='rbf', random_state=random_state, **kwargs)
             case 'xgb':
+                from xgboost import XGBClassifier
                 return XGBClassifier(objective='binary:logistic',
                                      tree_method='hist', 
                                      eval_metric='aucpr',
@@ -656,7 +661,6 @@ class ModelPipeline:
         steps:List[Tuple[str, Any]] = [("preprocessor", _pre)]
 
         if self.resample:
-            # Choose the sampling strategy while keeping the interface consistent.
             if sampler == 'under':
                 from imblearn.under_sampling import RandomUnderSampler
                 _sampler = RandomUnderSampler(random_state=random_state)
