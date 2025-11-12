@@ -5,7 +5,7 @@ import time
 # High-level helpers for configuring preprocessing and running model baselines.
 
 
-MODELS = ['rf', 'svc', 'sgd', 'xgb']
+MODELS = ['rf', 'svc', 'sgd', 'xgb', 'nb', 'knn']
 
 class ModelPipeline:
     """
@@ -22,7 +22,7 @@ class ModelPipeline:
 
         Printing metrics of each step ROC_AUC, prec, acc, recall, confusion matrics, classification report
 
-        Baseline is tested in 10 fold cross validation
+        Baseline is tested in 5 fold cross validation
         
         Hyperparam tuning is done using RandomizedSearch with 5 folds
 
@@ -153,6 +153,8 @@ class ModelPipeline:
         from sklearn.inspection import permutation_importance
         t0 = time.perf_counter()
 
+        print(f"----------Running Feature Importance for model: {self.model}----------")
+
         def plot_feature_importance(df, col1, col2, size, title):
             import matplotlib.pyplot as plt
             plt.figure(figsize=(10,6))
@@ -258,12 +260,12 @@ class ModelPipeline:
             self._print_dur(t0)
 
     def test(self, 
-         use_f2_threshold=True,
-         use_cost_threshold=False,
+         use_f2_threshold=False,
+         use_cost_threshold=True,
          R: float = 16300.0,
-         e: float = 0.50,
+         e: float = 0.33,
          c_m_list=(500.0, 1000.0, 1500.0),
-         prefer_c_m: float | None = 1000.0,  # choose None to maximize average
+         prefer_c_m: float | None = 330.0,
          show_plot=True,
          show_duration_info: bool = False,
          use_local_model=False,
@@ -382,6 +384,65 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
+    def run_full_suite(self,
+                        run_baseline: bool = True,
+                        run_hyperparam_search: bool = True,
+                        baseline_undersample: bool = True,
+                        baseline_smote: bool = True,
+                        feature_importance: bool = True,
+                        show_duration_info:bool = True,
+                        feat_num: int = 15,
+                        hyperparam_dist: Dict[str, Any] = {},
+                        n_iter: int = 30,
+                        n_jobs: int = -1,
+                        refit: bool = True,
+                        verbose: int = 1,
+                        prefer_c_m: float | None = 330.0,
+                        R: float = 16300.0,
+                        e: float = 0.33,
+                        c_m_list=(500.0, 1000.0, 1500.0),
+                        **kwargs
+                       ):
+        
+        if run_baseline:
+            self.run_baseline(
+                run_undersampler=baseline_undersample,
+                run_smote=baseline_smote,
+                show_duration_info=show_duration_info
+            )
+        
+        if feature_importance:
+            self.permute_importance(
+                print_num=feat_num,
+                plot=True,
+                show_duration_info=show_duration_info
+            )
+
+        if run_hyperparam_search:
+            self.run_hyperparam_search(
+                hyperparam_dist=hyperparam_dist,
+                n_iter=n_iter,
+                n_jobs=n_jobs,
+                refit=refit,
+                show_duration_info=show_duration_info,
+                verbose=verbose
+            )
+        self.validate(
+            use_local_model=not run_hyperparam_search,
+            show_duration_info=show_duration_info,
+            **kwargs
+        )
+
+        self.test(
+            prefer_c_m=prefer_c_m,
+            R=R,
+            e=e,
+            c_m_list=c_m_list,
+            use_local_model=not run_hyperparam_search,
+            show_duration_info=show_duration_info,
+            **kwargs
+        )
+
 
     def validate(self, 
                  show_duration_info:bool = False,
@@ -444,7 +505,7 @@ class ModelPipeline:
                               ):
         t0 = time.perf_counter()
         from sklearn.model_selection import RandomizedSearchCV
-
+        print(f"----------Running hyperparameter search for model: {self.model}----------")
         # Build a full pipeline so tuning evaluates preprocessing, sampling, and the estimator together.
         rs = RandomizedSearchCV(
             estimator=self._pipe_factory(self.model, random_state=self.random_state),
@@ -569,24 +630,32 @@ class ModelPipeline:
 
         print(f'Duration: {_fmt_time(time.perf_counter() - t0)}')
     
-    def _model_factory(self, model:str, **kwargs):
+    def _model_factory(self, model:str,random_state=42, **kwargs):
         from sklearn.ensemble import RandomForestClassifier
         from sklearn.linear_model import SGDClassifier
         from sklearn.svm import SVC
         from xgboost import XGBClassifier
+        from sklearn.naive_bayes import GaussianNB
+        from sklearn.neighbors import KNeighborsClassifier
+        
 
         match model:
+            case 'nb':
+                return GaussianNB(**kwargs)
+            case 'knn':
+                return KNeighborsClassifier(**kwargs)
             case 'rf':
-                return RandomForestClassifier(**kwargs)
+                return RandomForestClassifier(random_state=random_state, **kwargs)
             case 'sgd':
-                return SGDClassifier(**kwargs)
+                return SGDClassifier(random_state=random_state, **kwargs)
             case 'svc':
-                return SVC(kernel='rbf', **kwargs)
+                return SVC(kernel='rbf', random_state=random_state, **kwargs)
             case 'xgb':
                 return XGBClassifier(objective='binary:logistic',
                                      tree_method='hist', 
                                      eval_metric='aucpr',
                                      device='cuda',
+                                     random_state=random_state,
                                      **kwargs)
             case _:
                 raise ValueError(f"Unknown model '{model}'")

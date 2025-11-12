@@ -13,7 +13,7 @@ def summary_by(df, col):
     df_collapse[col] = np.round(df_collapse[col], 3)
 
     print(f'Models by {col}')
-    display(df_collapse.head(5)[['model', col]])
+    display(df_collapse.head(10)[['model', col]])
 
 
 
