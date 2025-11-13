@@ -129,7 +129,6 @@ def plot_bar_for_metric(
         .tolist()
     )
 
-    # If a dict is passed, assume it's a label->color map; otherwise seaborn will generate one
     use_hue = "label" if isinstance(palette, dict) else None
     kwargs = {"hue": use_hue, "palette": palette, "dodge": False} if use_hue else {"palette": palette}
 

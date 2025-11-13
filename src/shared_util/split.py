@@ -23,7 +23,6 @@ def group_split(
     Attempts to keep class prevalence close to overall within `balance_tolerance`.
     """
 
-    # sanity on sizes
     if not math.isclose(train_size + val_size + test_size, 1.0, rel_tol=1e-9):
         raise ValueError("train_size + val_size + test_size must equal 1.0")
 
@@ -68,7 +67,7 @@ def group_split(
         if tries >= max_tries:
             break
 
-    # leak sanity: no patient overlap
+    # leak test: no patient overlap
     tr_pat, va_pat, te_pat = set(train_df[group_col]), set(val_df[group_col]), set(test_df[group_col])
     assert tr_pat.isdisjoint(va_pat) and tr_pat.isdisjoint(te_pat) and va_pat.isdisjoint(te_pat), \
         "Patient overlap detected across splits."

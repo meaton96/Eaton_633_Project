@@ -2,9 +2,6 @@ import numpy as np
 import pandas as pd
 from typing import Dict, List, Any
 import time
-# High-level helpers for configuring preprocessing and running model baselines.
-
-
 MODELS = ['rf', 'svc', 'sgd', 'xgb', 'nb', 'knn', 'lr', 'mlp']
 
 class ModelPipeline:
@@ -179,7 +176,6 @@ class ModelPipeline:
                 if hasattr(step, "transform"):
                     Xt = step.transform(Xt)
                 else:
-                    # Non-sampler but also no transform? treat as passthrough
                     pass
             return Xt
         
@@ -345,7 +341,7 @@ class ModelPipeline:
 
         
 
-        # 2) Apply chosen threshold to test (or native predict if neither path)
+        # 2) Apply chosen threshold to test
         _test_scores = get_scores(_model, self.X_test)
         if chosen_thresh is not None:
             y_pred = (_test_scores >= chosen_thresh).astype(int)
@@ -455,7 +451,6 @@ class ModelPipeline:
             _model = self.randomized_search.best_estimator_
 
 
-        # Pull calibrated probabilities and convert them to hard labels via the tuned estimator.
         y_proba = get_scores(_model, self.X_validate)
         y_pred = _model.predict(self.X_validate) #type: ignore
 
@@ -578,15 +573,11 @@ class ModelPipeline:
                 )
 
         if run_smote:
-            from imblearn.over_sampling import SMOTE
             print('--------SMOTE Baseline--------')
-            # Compare against an oversampling strategy that synthesizes minority examples.
             _run_model('smote', 'smote')        
 
         if run_undersampler:
-            from imblearn.under_sampling import RandomUnderSampler
             print('-----Undersample Baseline-----')
-            # Also measure performance when we downsample the majority class.
             _run_model('under_sample', 'under')
     
 

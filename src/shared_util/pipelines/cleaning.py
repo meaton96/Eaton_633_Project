@@ -393,29 +393,20 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         def bin_medical_specialty(value: str) -> str:
             if pd.isna(value) or value in ("Missing", "Unknown", "PhysicianNotFound", "OutreachServices", "DCPTEAM"):
                 return "missing"
-            
-            # normalize casing and spacing just in case
             val = str(value).strip().lower()
             
-            # Internal Medicine
             if "internal" in val:
                 return "internal_medicine"
             
-            # Cardiology
             if "cardio" in val:
                 return "cardiology"
             
-            # Surgery (catch-all for surgical specialties)
             if "surg" in val or "orthopedic" in val or "urology" in val or "gyneco" in val or "neuro" in val or "vascular" in val or "thoracic" in val:
                 return "surgery"
-            
-            # Family / General Practice
             if "family" in val or "general" in val or "gp" in val or "obstetric" in val or "pediatr" in val:
                 return "pcp"
-            
-            # Everything else
             return "other"
-        # Discharge Dispostion -> 
+        
 
         def bin_discharge(id: int) -> str:
             if id in [1, 6, 8, 13]:

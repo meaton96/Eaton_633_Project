@@ -141,7 +141,7 @@ def log_metric(
     params = {
         "run_id": _to_int(run_id),
         "model": str(model),
-        "data": str(data),  # must match the enum label exactly
+        "data": str(data),  
         "threshold_notes": str(threshold_notes) if threshold_notes is not None else None,
         "pipeline_notes": str(pipeline_notes) if pipeline_notes is not None else None,
         "hyperparam_notes": str(hyperparam_notes) if hyperparam_notes is not None else None,

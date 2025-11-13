@@ -94,25 +94,6 @@ def cost_savings_by_threshold(y_true, y_scores, R=16300, c_m=1000, e=0.50):
     }
 
 
-# def make_f2_scorer():
-#     return make_scorer(fbeta_score, beta=2, average='binary')
-
-
-
-# def best_threshold_by_fbeta(y_true, scores, beta=2.0):
-#     precisions, recalls, thresholds = precision_recall_curve(y_true, scores)
-#     precisions_t = precisions[:-1]
-#     recalls_t = recalls[:-1]
-#     fbeta = (1 + beta**2) * (precisions_t * recalls_t) / (beta**2 * precisions_t + recalls_t + 1e-12)
-#     best_idx = int(np.argmax(fbeta))
-#     return {
-#         "threshold": thresholds[best_idx],
-#         "precision": float(precisions_t[best_idx]),
-#         "recall": float(recalls_t[best_idx]),
-#         "fbeta": float(fbeta[best_idx]),
-#         "curve": (thresholds, precisions_t, recalls_t, fbeta, best_idx),
-#     }
-
 def get_scores(estimator, X):
     # Try probabilities first
     if hasattr(estimator, "predict_proba"):
