@@ -26,8 +26,27 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self.log_transform_cols = log_transform_cols
         self.one_hot_ordinal = one_hot_ordinal
 
+    # rename weight values to not break feature headers down stream
+    def handle_weight(self):
+        self.X['weight'] = self.X['weight'].replace("?", 'missing')
+        weight_map = {
+            'missing': 'missing',
+            '[75-100)' : '75-100',
+            '[50-75)' : '50-75',
+            '[100-125)' : '100-125',
+            '[125-150)' : '125-150',
+            '[25-50)' : '25-50',
+            '[0-25)' : '0-25',
+            '[150-175)' : '150-175',
+            '[175-200)' : '175-200',
+            '>200' : 'greater_200'
+            }
+
+        self.X['weight'] = self.X['weight'].map(weight_map)
+
     # wrapper for all steps
     def run_pipe(self):
+        self.handle_weight()
         self.bin_categories()
         self.drop_previous_category_cols()
         self.one_hot_cats()
@@ -286,6 +305,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                     'a1c_group',
                     'glucose_group',
                     'admit_type_group',
+                    'weight'
                 ]
         
         if self.one_hot_ordinal:
