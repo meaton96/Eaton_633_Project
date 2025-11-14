@@ -162,7 +162,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
 
     # sklearn api
-    def get_feature_names_out(self, input_features=None):
+    def get_feature_names_out(self):
         from sklearn.utils.validation import check_is_fitted
         check_is_fitted(self, "feature_names_out_")
         return self.feature_names_out_

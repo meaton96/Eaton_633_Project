@@ -146,6 +146,11 @@ class ModelPipeline:
         
         self.model = model
 
+        # freeze feature schema on full train for later use in permutation importance
+        _clean_pipe = self.preprocessor_settings.factory()
+        _clean_pipe.fit(self.X_train)
+        self._feature_schema = _clean_pipe.get_feature_names_out()
+
     def permute_importance(self, print_num=15, plot=True,show_duration_info:bool = True,):
         from sklearn.inspection import permutation_importance
         t0 = time.perf_counter()
@@ -188,10 +193,12 @@ class ModelPipeline:
             # Compute permutation importance fold by fold so samplers respect the group structure.
             perm_means = []
             feat_names = None
-
+            name_to_idx = {name: i for i, name in enumerate(self._feature_schema)}
             for tr_idx, va_idx in cv.split(X, y, groups):
                 X_tr, y_tr = X.iloc[tr_idx], y.iloc[tr_idx]
                 X_va, y_va = X.iloc[va_idx], y.iloc[va_idx]
+
+
 
                 # Rebuild a fresh pipeline each iteration to avoid cross-fold leakage.
                 pipe = pipe_factory(self.model)
@@ -199,19 +206,15 @@ class ModelPipeline:
 
                 # Transform validation through inference-capable steps
                 Xt_va = _transform_through_inference_steps(pipe, X_va, model_step=model_step)
-
-                # Get names from the preprocessor if available; otherwise fallback
                 preproc = pipe.named_steps.get(prep_step)
-                if hasattr(preproc, "get_feature_names_out"):
-                    feat_names_fold = np.asarray(preproc.get_feature_names_out(), dtype=object)
-                else:
-                    feat_names_fold = np.array([f"x{i}" for i in range(Xt_va.shape[1])], dtype=object)
+                feat_names_fold = np.asarray(preproc.get_feature_names_out(), dtype=object)
 
-                if feat_names is None:
-                    feat_names = feat_names_fold
-                else:
-                    if len(feat_names) != len(feat_names_fold):
-                        raise RuntimeError("Transformed feature count changed across folds; pipeline not schema-stable.")
+
+                # Xt_va = pd.DataFrame(Xt_va, columns=feat_names_fold)
+
+                # # reindex to the global schema: add missing cols = 0, drop extras
+                # Xt_va = Xt_va.reindex(columns=self._feature_schema, fill_value=0)
+                # feat_names = np.asarray(self._feature_schema, dtype=object)
 
                 model = pipe.named_steps[model_step]
 
@@ -221,11 +224,21 @@ class ModelPipeline:
                     scoring=scoring, n_repeats=n_repeats,
                     n_jobs=n_jobs, random_state=random_state
                 )
-                perm_means.append(r.importances_mean) #type: ignore
+
+
+                fold_importance = np.zeros(len(self._feature_schema))
+                for j, name in enumerate(feat_names_fold):
+                    idx = name_to_idx.get(name)
+                    if idx is not None:
+                        fold_importance[idx] = r.importances_mean[j] #type: ignore
+
+                perm_means.append(fold_importance)
+
+               # perm_means.append(r.importances_mean) #type: ignore
 
             arr = np.vstack(perm_means)
             df = pd.DataFrame({
-                "feature": feat_names,
+                "feature": self._feature_schema,
                 "importance_mean": arr.mean(axis=0),
                 "importance_std": arr.std(axis=0)
             }).sort_values("importance_mean", ascending=False)
@@ -559,6 +572,7 @@ class ModelPipeline:
                 y_train=self.y_train,
                 cv=self._make_group_cv()
             )
+
 
             if self.LOG:
                 from shared_util.log import log_metric
