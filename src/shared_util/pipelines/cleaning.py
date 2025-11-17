@@ -87,11 +87,9 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
         self.run_pipe() # transform
 
-   
-        self._ref_dummies_ = self._choose_ref_dummies(self.X)
-
-       
-        self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
+        # TODO testing non-remove features (reduce bias in regularized models)
+        # self._ref_dummies_ = self._choose_ref_dummies(self.X)
+        # self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
 
        
         self._safe_drop_non_features()
@@ -116,9 +114,10 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
             self.run_pipe()
 
+            # TODO testing non-remove features (reduce bias in regularized models)
             # Drop the same refs chosen at fit, if they exist in this X
-            if hasattr(self, "_ref_dummies_"):
-                self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
+            # if hasattr(self, "_ref_dummies_"):
+            #     self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
 
             self._safe_drop_non_features()
 
@@ -161,7 +160,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X = self.X.drop(columns=to_drop, errors="ignore")
 
 
-    # sklearn api
+    
     def get_feature_names_out(self):
         from sklearn.utils.validation import check_is_fitted
         check_is_fitted(self, "feature_names_out_")
@@ -241,36 +240,36 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X[f'i_hosp_time__{col}'] = self.X[col] * self.X['time_in_hospital']
 
 
-    def _choose_ref_dummies(self, X: pd.DataFrame) -> dict[str, str]:
-        # Map each dummy family to a regex
-        families = {
-            'diag1_group_':       r'^diag1_group_',
-            'diag2_group_':       r'^diag2_group_',
-            'diag3_group_':       r'^diag3_group_',
-            'admission_source_':  r'^admission_source_',
-            'discharge_loc_':     r'^discharge_loc_',
-            'specialty_cat_':     r'^specialty_cat_',
-            'race_cat_':          r'^race_cat_',
-            'age_group_':         r'^age_group_',
-            'gender_':            r'^gender_',
-            'a1c_group_':         r'^a1c_group_',
-            'glucose_group_':     r'^glucose_group_',
-            'admit_type_group_':  r'^admit_type_group_',
-        }
+    # def _choose_ref_dummies(self, X: pd.DataFrame) -> dict[str, str]:
+    #     # Map each dummy family to a regex
+    #     families = {
+    #         'diag1_group_':       r'^diag1_group_',
+    #         'diag2_group_':       r'^diag2_group_',
+    #         'diag3_group_':       r'^diag3_group_',
+    #         'admission_source_':  r'^admission_source_',
+    #         'discharge_loc_':     r'^discharge_loc_',
+    #         'specialty_cat_':     r'^specialty_cat_',
+    #         'race_cat_':          r'^race_cat_',
+    #         'age_group_':         r'^age_group_',
+    #         'gender_':            r'^gender_',
+    #         'a1c_group_':         r'^a1c_group_',
+    #         'glucose_group_':     r'^glucose_group_',
+    #         'admit_type_group_':  r'^admit_type_group_',
+    #     }
 
-        if self.one_hot_ordinal:
-            families['v_outpatient_group'] = r'^v_outpatient_group'
-            families['v_emergency_group'] = r'^v_emergency_group'
+    #     if self.one_hot_ordinal:
+    #         families['v_outpatient_group'] = r'^v_outpatient_group'
+    #         families['v_emergency_group'] = r'^v_emergency_group'
 
-        refs = {}
-        for fam, pat in families.items():
-            cols = X.filter(regex=pat).columns
-            if len(cols) >= 2:
-                # Choose the most frequent level as reference (sum of one-hot = count)
-                counts = X[cols].sum(axis=0)
-                ref_col = counts.idxmax()
-                refs[fam] = ref_col
-        return refs
+    #     refs = {}
+    #     for fam, pat in families.items():
+    #         cols = X.filter(regex=pat).columns
+    #         if len(cols) >= 2:
+    #             # Choose the most frequent level as reference (sum of one-hot = count)
+    #             counts = X[cols].sum(axis=0)
+    #             ref_col = counts.idxmax()
+    #             refs[fam] = ref_col
+    #     return refs
 
     def handle_drug_cols(self):
         # swap to binary flags
