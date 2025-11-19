@@ -16,6 +16,9 @@ def cost_curves_from_scores(
     precision, recall = precision[:-1], recall[:-1]  # align with thresholds
     p = float(np.mean(y_true))
 
+    # adjust e based on estimated % of readmissions that COULD be prevented (25-75% from literature)
+    e = e * 0.5
+
     # flag_rate = P(flag) = (p * recall) / precision
     with np.errstate(divide='ignore', invalid='ignore'):
         flag_rate = np.where(precision > 0, (p * recall) / precision, 0.0)
