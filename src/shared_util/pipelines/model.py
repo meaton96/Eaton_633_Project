@@ -36,7 +36,7 @@ class ModelPipeline:
         """
         create_interactions: bool = True
         log_transform_cols: np.ndarray | None
-        one_hot_ordinal: bool = True
+       # one_hot_ordinal: bool = True
 
         def __init__(self, 
                      create_interactions=True, 
@@ -45,7 +45,7 @@ class ModelPipeline:
                      ) -> None:
             self.create_interactions = create_interactions
             self.log_transform_cols = log_transform_cols
-            self.one_hot_ordinal = one_hot_ordinal
+           # self.one_hot_ordinal = one_hot_ordinal
             
             
         def factory(self):

@@ -20,33 +20,33 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
     def __init__(self, 
                  create_interactions=True, 
                  log_transform_cols:None | np.ndarray=None,
-                 one_hot_ordinal:bool = True
+                 #one_hot_ordinal:bool = True
                  ) -> None:
         self.create_interactions = create_interactions
         self.log_transform_cols = log_transform_cols
-        self.one_hot_ordinal = one_hot_ordinal
+       # self.one_hot_ordinal = one_hot_ordinal
 
     # rename weight values to not break feature headers down stream
-    def handle_weight(self):
-        self.X['weight'] = self.X['weight'].replace("?", 'missing')
-        weight_map = {
-            'missing': 'missing',
-            '[75-100)' : '75-100',
-            '[50-75)' : '50-75',
-            '[100-125)' : '100-125',
-            '[125-150)' : '125-150',
-            '[25-50)' : '25-50',
-            '[0-25)' : '0-25',
-            '[150-175)' : '150-175',
-            '[175-200)' : '175-200',
-            '>200' : 'greater_200'
-            }
+    # def handle_weight(self):
+    #     self.X['weight'] = self.X['weight'].replace("?", 'missing')
+    #     weight_map = {
+    #         'missing': 'missing',
+    #         '[75-100)' : '75-100',
+    #         '[50-75)' : '50-75',
+    #         '[100-125)' : '100-125',
+    #         '[125-150)' : '125-150',
+    #         '[25-50)' : '25-50',
+    #         '[0-25)' : '0-25',
+    #         '[150-175)' : '150-175',
+    #         '[175-200)' : '175-200',
+    #         '>200' : 'greater_200'
+    #         }
 
-        self.X['weight'] = self.X['weight'].map(weight_map)
+    #     self.X['weight'] = self.X['weight'].map(weight_map)
 
     # wrapper for all steps
     def run_pipe(self):
-        self.handle_weight()
+       # self.handle_weight()
         self.bin_categories()
         self.drop_previous_category_cols()
         self.one_hot_cats()
@@ -59,23 +59,22 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         if self.log_transform_cols is not None and len(self.log_transform_cols) > 0:
             self.log_transform_continous_features()
 
-        if not self.one_hot_ordinal:
-            # transform binned ordinal categories into numeric encodings for tree models
-            mapping = {
-                'none': 0,
-                'one': 1,
-                'few': 3,
-                'several': 6,
-                'frequent': 10
-            }
+        # transform binned ordinal categories into numeric encodings
+        # mapping = {
+        #     'none': 0,
+        #     'one': 1,
+        #     'few': 3,
+        #     'several': 6,
+        #     'frequent': 10
+        # }
 
-            ordinal_cols = ['v_outpatient_group', 'v_emergency_group']
-            
-            for col in ordinal_cols:
-                num_col = f"{col}_num"
-                self.X[num_col] = self.X[col].map(mapping).astype('Int64')
+        # ordinal_cols = ['v_outpatient_group', 'v_emergency_group']
+        
+        # for col in ordinal_cols:
+        #     num_col = f"{col}_num"
+        #     self.X[num_col] = self.X[col].map(mapping).astype('Int64')
 
-            self.X.drop(columns=ordinal_cols, inplace=True)
+        # self.X.drop(columns=ordinal_cols, inplace=True)
             
 
     # fit to supplied data, saves data as class field for manipulation
@@ -299,17 +298,16 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                     'discharge_loc',
                     'specialty_cat',
                     'race_cat',
-                    'age_group',
                     'gender',
                     'a1c_group',
                     'glucose_group',
                     'admit_type_group',
-                    'weight'
+                    
                 ]
         
-        if self.one_hot_ordinal:
-            columns.append('v_outpatient_group')
-            columns.append('v_emergency_group')
+        # if self.one_hot_ordinal:
+        #     columns.append('v_outpatient_group')
+        #     columns.append('v_emergency_group')
 
 
         
@@ -317,7 +315,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         # one hot categorical columns
         self.X = pd.get_dummies(self.X, columns=columns, dtype=int)
         
-        self.X = self.X.rename(columns={'gender_Female' : 'gender_female', 'gender_Male' : 'gender_male'})
+        #self.X = self.X.rename(columns={'gender_Female' : 'gender_female', 'gender_Male' : 'gender_male'})
 
     def drop_previous_category_cols(self):
         columns=['diag_1', 
@@ -332,7 +330,9 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 'max_glu_serum',
                 'admission_type_id',
                 'number_outpatient',
-                'number_emergency'
+                'number_emergency',
+                'number_inpatient', # <-- added
+                'weight'
                 ]
         
 
@@ -452,15 +452,23 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             return "other"
     
 
-        # bin age -> 3 groups
-        def bin_age(age: str) -> str:
-            # grabs [0-10], [10-20], [20-30]
-            if ('10' in age or '20' in age):
-                return 'under_30'
-            # grabs (30-40), (40-50), (50-60)
-            if ('40' in age or '50' in age):
-                return '30-60'
-            return 'over_60'
+        # # bin age -> 3 groups
+        # def bin_age(age: str) -> str:
+        #     # grabs [0-10], [10-20], [20-30]
+        #     if ('10' in age or '20' in age):
+        #         return 'under_30'
+        #     # grabs (30-40), (40-50), (50-60)
+        #     if ('40' in age or '50' in age):
+        #         return '30-60'
+        #     return 'over_60'
+        def encode_age_ordinal(x: str) -> int:
+            age_map = {
+                "[0-10)": 0, "[10-20)": 1, "[20-30)": 2, "[30-40)": 3,
+                "[40-50)": 4, "[50-60)": 5, "[60-70)": 6, "[70-80)": 7,
+                "[80-90)": 8, "[90-100)": 9
+            }
+            return age_map.get(x, -1)
+
         # bin a1c results
         def bin_a1c(val: str) -> str:
             if pd.isna(val):
@@ -491,17 +499,37 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 return 'elective'
             return 'other'
         
-        # bin number outpatient
-        def bin_procedure_cols(num: int) -> str:
+        # ordinal encode number outpatient
+        def bin_procedure_cols(num: int) -> int:
             if num == 0:
-                return 'none'
+                return 0
             if num == 1:
-                return 'one'
+                return 1
             if num in [2,3]:
-                return 'few'
+                return 2
             if num < 8:
-                return 'several'
-            return 'frequent'
+                return 3
+            return 4
+        
+        def weight_measured(weight_grp: str) -> int:
+            return 0 if weight_grp == '?' else 1
+        
+        def bin_weight_ordinal(weight_grp: int) -> int:
+            if weight_grp == '?':
+                return -1
+            # Low weight
+            if weight_grp in ["[0-25)", "[25-50)"]:
+                return 0
+            
+            # Mid weight
+            if weight_grp in ["[50-75)", "[75-100)", "[100-125)", "[125-150)"]:
+                return 1
+            
+            # High weight (everything >=150)
+            if weight_grp in ["[150-175)", "[175-200)", ">200"]:
+                return 2
+            
+            return -1
         
 
 
@@ -512,13 +540,15 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         self.X['discharge_loc'] = self.X['discharge_disposition_id'].apply(bin_discharge)
         self.X['specialty_cat'] = self.X['medical_specialty'].apply(bin_medical_specialty)
         self.X['race_cat'] = self.X['race'].apply(bin_race)
-        self.X['age_group'] = self.X['age'].apply(bin_age)
+        self.X['age_group'] = self.X['age'].apply(encode_age_ordinal)
         self.X['a1c_group'] = self.X['A1Cresult'].apply(bin_a1c)
         self.X['glucose_group'] = self.X['max_glu_serum'].apply(bin_glucose)
         self.X['admit_type_group'] = self.X['admission_type_id'].apply(bin_admit_type)
         self.X['v_outpatient_group'] = self.X['number_outpatient'].apply(bin_procedure_cols)
         self.X['v_emergency_group'] = self.X['number_emergency'].apply(bin_procedure_cols)
-        #self.X['v_inpatient_group'] = self.X['number_inpatient'].apply(bin_procedure_cols)
+        self.X['v_inpatient_group'] = self.X['number_inpatient'].apply(bin_procedure_cols)
+        self.X['weight_measured'] = self.X['weight'].apply(weight_measured)
+        self.X['weight_group'] = self.X['weight'].apply(bin_weight_ordinal)
     
 
 
