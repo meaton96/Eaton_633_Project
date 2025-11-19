@@ -256,9 +256,9 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
     #         'admit_type_group_':  r'^admit_type_group_',
     #     }
 
-    #     if self.one_hot_ordinal:
-    #         families['v_outpatient_group'] = r'^v_outpatient_group'
-    #         families['v_emergency_group'] = r'^v_emergency_group'
+    #     # if self.one_hot_ordinal:
+    #     #     families['v_outpatient_group'] = r'^v_outpatient_group'
+    #     #     families['v_emergency_group'] = r'^v_emergency_group'
 
     #     refs = {}
     #     for fam, pat in families.items():

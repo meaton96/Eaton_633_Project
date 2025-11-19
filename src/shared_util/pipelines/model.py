@@ -96,7 +96,7 @@ class ModelPipeline:
                  scaler: str | None = None, # standard, power
                  group_by_col='patient_nbr',
                  use_pca: bool = False,
-                 one_hot_ordinal: bool = True,
+               #  one_hot_ordinal: bool = True,
                  resample: bool = True
                  ) -> None:
         """
@@ -140,7 +140,7 @@ class ModelPipeline:
         self.preprocessor_settings = self.PreprocessorSettings(
             create_interactions=create_interactions,
             log_transform_cols=log_transform_cols,
-            one_hot_ordinal=one_hot_ordinal
+           # one_hot_ordinal=one_hot_ordinal
         )
 
         
