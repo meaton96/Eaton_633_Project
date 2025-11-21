@@ -282,7 +282,6 @@ class ModelPipeline:
         """
         New: use_cost_threshold selects threshold maximizing $ savings on the validate set.
         - Overlays: PR curve with break-even PPV lines, and savings vs threshold per c_m.
-        - If both use_f2_threshold and use_cost_threshold are True, cost wins. Because money.
         """
         if (not self.validated or not self.tuned) and not use_local_model:
             raise EnvironmentError("Must validate before test")
@@ -335,7 +334,6 @@ class ModelPipeline:
             # using a specific c_m
             est_pp_savings = float(choice["savings_at_c"][choice["chosen_c_m"]])
         
-        # Optional overlays
         if show_plot:
             title = f"PR with break-even PPV lines (R=${int(R)}, e={e:.2f})"
             plot_pr_with_break_even(curves, R=R, e=e, c_m_list=c_m_list, title=title)
@@ -381,64 +379,7 @@ class ModelPipeline:
         if show_duration_info:
             self._print_dur(t0)
 
-    def run_full_suite(self,
-                        run_baseline: bool = True,
-                        run_hyperparam_search: bool = True,
-                        baseline_undersample: bool = True,
-                        baseline_smote: bool = True,
-                        feature_importance: bool = True,
-                        show_duration_info:bool = True,
-                        feat_num: int = 15,
-                        hyperparam_dist: Dict[str, Any] = {},
-                        n_iter: int = 30,
-                        n_jobs: int = -1,
-                        refit: bool = True,
-                        verbose: int = 1,
-                        prefer_c_m: float | None = 330.0,
-                        R: float = 16300.0,
-                        e: float = 0.33,
-                        c_m_list=(500.0, 1000.0, 1500.0),
-                        **kwargs
-                       ):
-        
-        if run_baseline:
-            self.run_baseline(
-                run_undersampler=baseline_undersample,
-                run_smote=baseline_smote,
-                show_duration_info=show_duration_info
-            )
-        
-        if feature_importance:
-            self.permute_importance(
-                print_num=feat_num,
-                plot=True,
-                show_duration_info=show_duration_info
-            )
-
-        if run_hyperparam_search:
-            self.run_hyperparam_search(
-                hyperparam_dist=hyperparam_dist,
-                n_iter=n_iter,
-                n_jobs=n_jobs,
-                refit=refit,
-                show_duration_info=show_duration_info,
-                verbose=verbose
-            )
-        self.validate(
-            use_local_model=not run_hyperparam_search,
-            show_duration_info=show_duration_info,
-            **kwargs
-        )
-
-        self.test(
-            prefer_c_m=prefer_c_m,
-            R=R,
-            e=e,
-            c_m_list=c_m_list,
-            use_local_model=not run_hyperparam_search,
-            show_duration_info=show_duration_info,
-            **kwargs
-        )
+    
 
 
     def validate(self, 
