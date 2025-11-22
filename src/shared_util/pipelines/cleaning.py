@@ -299,8 +299,8 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                     'specialty_cat',
                     'race_cat',
                     'gender',
-                    'a1c_group',
-                    'glucose_group',
+                   # 'a1c_group',
+                   # 'glucose_group',
                     'admit_type_group',
                     
                 ]
@@ -470,22 +470,22 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             return age_map.get(x, -1)
 
         # bin a1c results
-        def bin_a1c(val: str) -> str:
+        def bin_a1c(val: str) -> int:
             if pd.isna(val):
-                return 'no_test'
+                return 0
             if val in ('>7', '>8'):
-                return 'high'
+                return 2
             if val.lower().startswith('norm'):
-                return 'normal'
-            return 'no_test'
-        def bin_glucose(val: str) -> str:
+                return 1
+            return 0
+        def bin_glucose(val: str) -> int:
             if pd.isna(val):
-                return 'no_test'
+                return 0
             if val in ('>200', '>300'):
-                return 'high'
+                return 2
             if val.lower().startswith('norm'):
-                return 'normal'
-            return 'no_test'
+                return 1
+            return 0
         
         # bin admission type id 
         def bin_admit_type(id: int) -> str:
