@@ -92,7 +92,7 @@ def plot_metrics(df, plot_id, title_suff = "", metrics = DEFAULT_METRIC_COLS, pa
                 model_order=model_order)
     
 # helper to make consistent chart layout
-def _plot_metrics(subset, title, palette, model_order):
+def _plot_metrics(subset, title, palette, model_order, save_fig=False):
     plt.figure(figsize=(12,6))
     sns.barplot(
         data=subset,
@@ -107,12 +107,13 @@ def _plot_metrics(subset, title, palette, model_order):
     plt.grid(axis="y", linestyle="--", alpha=0.4)
     plt.legend(title="Model", frameon=False)
     plt.tight_layout()
-    plt.savefig(f'{DEFAULT_SAVE_LOCATION}/{title}.png')
+    if save_fig:
+        plt.savefig(f'{DEFAULT_SAVE_LOCATION}/{title}.png')
     plt.show()
     
 
 # Plotting helpers for comparing runs
-def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_METRIC_COLS, title: str = "Metrics per Run", cmap='YlGnBu'):
+def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_METRIC_COLS, title: str = "Metrics per Run", cmap='YlGnBu', save_fig=False):
     data = df[["label"] + list(metric_cols)].set_index("label")
     plt.figure(figsize=(max(8, len(metric_cols)*1.2), max(6, len(data)*0.4 + 2)))#type: ignore
     sns.heatmap(data, annot=True, fmt=".3f", cmap=cmap, cbar=True)
@@ -120,7 +121,8 @@ def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_M
     plt.xlabel("Metric")
     plt.ylabel("Run (label)")
     plt.tight_layout()
-    plt.savefig(f'{DEFAULT_SAVE_LOCATION}/metrics_heatmap.png')
+    if save_fig:
+        plt.savefig(f'{DEFAULT_SAVE_LOCATION}/metrics_heatmap.png')
 
 
 def plot_bar_for_metric(
