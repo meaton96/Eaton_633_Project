@@ -4,10 +4,12 @@ import pandas as pd
 from typing import Iterable, Any
 
 DEFAULT_METRIC_COLS = ["roc_auc", "f1", "precision", "recall", "accuracy"]
+DEFAULT_SAVE_LOCATION = '../plots'
 
 def plot_pr_with_break_even(curves, R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0), title=None):
     # PR: x=recall, y=precision
     plt.figure()
+    e = e*0.5
     plt.plot(curves["recall"], curves["precision"], label="PR curve")
     # horizontal break-even precision lines: PPV_break_even = c_m / (e * R)
     for c in c_m_list:
@@ -60,9 +62,13 @@ def plot_metrics(df, plot_id, title_suff = "", metrics = DEFAULT_METRIC_COLS, pa
 
     # ensure model column sorted nicely for consistent colors
     df_filtered["model"] = df_filtered["model"].astype("category")
-    model_order = sorted(df_filtered["model"].unique())
+   # model_order = sorted(df_filtered["model"].unique())
+   
+    model_order = df_filtered["model"].unique()
+    df_filtered["model"] = pd.Categorical(df_filtered["model"],
+                                          categories=model_order,
+                                          ordered=True)
     palette = sns.color_palette(palette, len(model_order))
-
     # melt for plotting
     melted = df_filtered.melt(
         id_vars=["model", "data"],
@@ -74,29 +80,36 @@ def plot_metrics(df, plot_id, title_suff = "", metrics = DEFAULT_METRIC_COLS, pa
     # --- Plot 1: Validation (pre-threshold) ---
     validate_df = melted[melted["data"] == "validate"]
     _plot_metrics(validate_df,
-                f"Model Comparison on Validation Set (Pre-Threshold Testing) [{title_suff}]", palette)
+                f"Model Comparison on Validation Set (Pre-Threshold Testing) [{title_suff}]", 
+                palette,
+                model_order=model_order)
 
     # --- Plot 2: Test
     test_df = melted[melted["data"] == "test"]
     _plot_metrics(test_df,
-                f"Model Comparison on Held-Out Test Set (Cost Weighted Threshold) [{title_suff}]", palette)
+                f"Model Comparison on Held-Out Test Set (Cost Weighted Threshold) [{title_suff}]", 
+                palette,
+                model_order=model_order)
     
 # helper to make consistent chart layout
-def _plot_metrics(subset, title, palette):
+def _plot_metrics(subset, title, palette, model_order):
     plt.figure(figsize=(12,6))
     sns.barplot(
         data=subset,
         x="metric", y="score",
         hue="model",
         palette=palette,
-        errorbar=None
+        errorbar=None,
+        hue_order=model_order
     )
     plt.ylim(0, 1)
     plt.title(title, fontsize=14, weight="bold")
     plt.grid(axis="y", linestyle="--", alpha=0.4)
     plt.legend(title="Model", frameon=False)
     plt.tight_layout()
+    plt.savefig(f'{DEFAULT_SAVE_LOCATION}/{title}.png')
     plt.show()
+    
 
 # Plotting helpers for comparing runs
 def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_METRIC_COLS, title: str = "Metrics per Run", cmap='YlGnBu'):
@@ -107,6 +120,7 @@ def plot_metric_heatmap(df: pd.DataFrame, metric_cols: Iterable[str] = DEFAULT_M
     plt.xlabel("Metric")
     plt.ylabel("Run (label)")
     plt.tight_layout()
+    plt.savefig(f'{DEFAULT_SAVE_LOCATION}/metrics_heatmap.png')
 
 
 def plot_bar_for_metric(

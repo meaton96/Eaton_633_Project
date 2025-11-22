@@ -185,5 +185,6 @@ data/*/*.png
 data/*.csv
 data/*.joblib
 data/temp/*
+plots/*
 
 src/shared_util/data/*.joblib
