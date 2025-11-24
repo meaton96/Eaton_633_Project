@@ -6,7 +6,8 @@ from sklearn.metrics import make_scorer, fbeta_score
 
 def cost_curves_from_scores(
     y_true, y_scores, 
-    R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0)
+    R=16300.0, e=0.50, c_m_list=(500.0, 1000.0, 1500.0),
+    plot = False
 ):
     """
     Returns PR arrays, thresholds, prevalence, flag_rate, and per-patient savings 
@@ -15,6 +16,22 @@ def cost_curves_from_scores(
     precision, recall, thresholds = precision_recall_curve(y_true, y_scores)
     precision, recall = precision[:-1], recall[:-1]  # align with thresholds
     p = float(np.mean(y_true))
+
+    if plot:
+        plt.figure(figsize=(10,6))
+
+        plt.plot(thresholds, precision, label='Precision', lw=2)
+        plt.plot(thresholds, recall, label='Recall', lw=2)
+
+        plt.axvline(0.5, color='red', linestyle='--', label='Default threshold')
+
+        plt.xlabel('Threshold')
+        plt.ylabel('Score')
+        plt.title('Precision–Recall vs Threshold')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+
 
     # adjust e based on estimated % of readmissions that COULD be prevented (25-75% from literature)
     e = e * 0.5

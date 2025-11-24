@@ -96,7 +96,6 @@ class ModelPipeline:
                  scaler: str | None = None, # standard, power
                  group_by_col='patient_nbr',
                  use_pca: bool = False,
-               #  one_hot_ordinal: bool = True,
                  resample: bool = True
                  ) -> None:
         """
@@ -278,6 +277,7 @@ class ModelPipeline:
          show_plot=True,
          show_duration_info: bool = False,
          use_local_model=False,
+         plot_pr_curves = False,
          **kwargs):
         """
         New: use_cost_threshold selects threshold maximizing $ savings on the validate set.
@@ -320,7 +320,8 @@ class ModelPipeline:
         curves = cost_curves_from_scores(
             y_true=self.y_validate,
             y_scores=_val_scores,
-            R=R, e=e, c_m_list=c_m_list
+            R=R, e=e, c_m_list=c_m_list,
+            plot=plot_pr_curves
         )
         choice = best_threshold_by_cost(curves, prefer_c_m=prefer_c_m)
 

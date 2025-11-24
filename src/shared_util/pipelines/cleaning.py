@@ -20,33 +20,12 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
     def __init__(self, 
                  create_interactions=True, 
                  log_transform_cols:None | np.ndarray=None,
-                 #one_hot_ordinal:bool = True
                  ) -> None:
         self.create_interactions = create_interactions
         self.log_transform_cols = log_transform_cols
-       # self.one_hot_ordinal = one_hot_ordinal
-
-    # rename weight values to not break feature headers down stream
-    # def handle_weight(self):
-    #     self.X['weight'] = self.X['weight'].replace("?", 'missing')
-    #     weight_map = {
-    #         'missing': 'missing',
-    #         '[75-100)' : '75-100',
-    #         '[50-75)' : '50-75',
-    #         '[100-125)' : '100-125',
-    #         '[125-150)' : '125-150',
-    #         '[25-50)' : '25-50',
-    #         '[0-25)' : '0-25',
-    #         '[150-175)' : '150-175',
-    #         '[175-200)' : '175-200',
-    #         '>200' : 'greater_200'
-    #         }
-
-    #     self.X['weight'] = self.X['weight'].map(weight_map)
 
     # wrapper for all steps
     def run_pipe(self):
-       # self.handle_weight()
         self.bin_categories()
         self.drop_previous_category_cols()
         self.one_hot_cats()
@@ -59,23 +38,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
         if self.log_transform_cols is not None and len(self.log_transform_cols) > 0:
             self.log_transform_continous_features()
 
-        # transform binned ordinal categories into numeric encodings
-        # mapping = {
-        #     'none': 0,
-        #     'one': 1,
-        #     'few': 3,
-        #     'several': 6,
-        #     'frequent': 10
-        # }
-
-        # ordinal_cols = ['v_outpatient_group', 'v_emergency_group']
-        
-        # for col in ordinal_cols:
-        #     num_col = f"{col}_num"
-        #     self.X[num_col] = self.X[col].map(mapping).astype('Int64')
-
-        # self.X.drop(columns=ordinal_cols, inplace=True)
-            
 
     # fit to supplied data, saves data as class field for manipulation
     def fit(self, X, y=None):
@@ -86,11 +48,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
 
         self.run_pipe() # transform
 
-        # TODO testing non-remove features (reduce bias in regularized models)
-        # self._ref_dummies_ = self._choose_ref_dummies(self.X)
-        # self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
-
-       
         self._safe_drop_non_features()
 
         # Freeze final schema
@@ -112,11 +69,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X = Xw
 
             self.run_pipe()
-
-            # TODO testing non-remove features (reduce bias in regularized models)
-            # Drop the same refs chosen at fit, if they exist in this X
-            # if hasattr(self, "_ref_dummies_"):
-            #     self.X = self.X.drop(columns=list(self._ref_dummies_.values()), errors="ignore")
 
             self._safe_drop_non_features()
 
@@ -239,37 +191,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
             self.X[f'i_hosp_time__{col}'] = self.X[col] * self.X['time_in_hospital']
 
 
-    # def _choose_ref_dummies(self, X: pd.DataFrame) -> dict[str, str]:
-    #     # Map each dummy family to a regex
-    #     families = {
-    #         'diag1_group_':       r'^diag1_group_',
-    #         'diag2_group_':       r'^diag2_group_',
-    #         'diag3_group_':       r'^diag3_group_',
-    #         'admission_source_':  r'^admission_source_',
-    #         'discharge_loc_':     r'^discharge_loc_',
-    #         'specialty_cat_':     r'^specialty_cat_',
-    #         'race_cat_':          r'^race_cat_',
-    #         'age_group_':         r'^age_group_',
-    #         'gender_':            r'^gender_',
-    #         'a1c_group_':         r'^a1c_group_',
-    #         'glucose_group_':     r'^glucose_group_',
-    #         'admit_type_group_':  r'^admit_type_group_',
-    #     }
-
-    #     # if self.one_hot_ordinal:
-    #     #     families['v_outpatient_group'] = r'^v_outpatient_group'
-    #     #     families['v_emergency_group'] = r'^v_emergency_group'
-
-    #     refs = {}
-    #     for fam, pat in families.items():
-    #         cols = X.filter(regex=pat).columns
-    #         if len(cols) >= 2:
-    #             # Choose the most frequent level as reference (sum of one-hot = count)
-    #             counts = X[cols].sum(axis=0)
-    #             ref_col = counts.idxmax()
-    #             refs[fam] = ref_col
-    #     return refs
-
+   
     def handle_drug_cols(self):
         # swap to binary flags
         self.X['diabetesMed_flag'] = (self.X['diabetesMed'].str.lower() == 'yes').astype(int)
@@ -299,23 +221,13 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                     'specialty_cat',
                     'race_cat',
                     'gender',
-                   # 'a1c_group',
-                   # 'glucose_group',
                     'admit_type_group',
                     
                 ]
         
-        # if self.one_hot_ordinal:
-        #     columns.append('v_outpatient_group')
-        #     columns.append('v_emergency_group')
-
-
-        
-
         # one hot categorical columns
         self.X = pd.get_dummies(self.X, columns=columns, dtype=int)
         
-        #self.X = self.X.rename(columns={'gender_Female' : 'gender_female', 'gender_Male' : 'gender_male'})
 
     def drop_previous_category_cols(self):
         columns=['diag_1', 
@@ -331,7 +243,7 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 'admission_type_id',
                 'number_outpatient',
                 'number_emergency',
-                'number_inpatient', # <-- added
+                'number_inpatient', 
                 'weight'
                 ]
         
@@ -451,16 +363,6 @@ class CleaningPipeline(BaseEstimator, TransformerMixin):
                 return "african_american"
             return "other"
     
-
-        # # bin age -> 3 groups
-        # def bin_age(age: str) -> str:
-        #     # grabs [0-10], [10-20], [20-30]
-        #     if ('10' in age or '20' in age):
-        #         return 'under_30'
-        #     # grabs (30-40), (40-50), (50-60)
-        #     if ('40' in age or '50' in age):
-        #         return '30-60'
-        #     return 'over_60'
         def encode_age_ordinal(x: str) -> int:
             age_map = {
                 "[0-10)": 0, "[10-20)": 1, "[20-30)": 2, "[30-40)": 3,
