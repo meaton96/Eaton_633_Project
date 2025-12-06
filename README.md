@@ -76,5 +76,11 @@ pip -q install 'git+https://github.com/meaton96/Eaton_633_Project.git'
 ## Dataset
 https://archive.ics.uci.edu/dataset/296/diabetes+130-us+hospitals+for+years+1999-2008
 
+## Collab Link
+https://colab.research.google.com/drive/1E7_V81cGwYKiwLW7abePrrMUHN1nQ2SL?usp=sharing
+
+## Report Link
+https://github.com/meaton96/Eaton_633_Project/blob/main/Eaton_633_Report.pdf
+
 
 
